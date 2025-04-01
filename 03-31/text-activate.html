@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Speech Reader</title>
+    <style>
+        body{
+            margin:0;
+            padding:0;
+            overflow:hidden;
+            height:100vh;
+            width:100vw;
+            background-color:white;
+            font-family:Arial, sans-serif;
+        }
+
+        .container{
+            position:relative;
+            width:100%;
+            height:100%;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+        }
+
+        #visualContainer{
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            pointer-events:none;
+            z-index:1;
+        }
+
+        #controls{
+            position:fixed;
+            bottom:20px;
+            width:100%;
+            display:flex;
+            justify-content:center;
+            z-index:10;
+        }
+
+        button{
+            margin:5px;
+            padding:10px 15px;
+            background-color:#fff;
+            border:1px solid #dadada;
+            cursor:pointer;
+        }
+
+        button:hover:not(:disabled){
+            background-color:black;
+            color:white;
+        }
+
+        .disabled{
+            opacity:0.5;
+            cursor:not-allowed;
+        }
+        
+        #debugInfo{
+            position:fixed;
+            top:10px;
+            right:10px;
+            background:rgba(255,255,255,0.8);
+            padding:5px;
+            font-size:12px;
+            z-index:100;
+        }
+        
+        #readingPrompt{
+            position:relative;
+            width:80%;
+            max-width:700px;
+            padding:20px;
+            border-radius:5px;
+            margin-bottom:20px;
+            text-align:left;
+            max-height:50vh;
+            overflow-y:auto;
+            line-height:1.6;
+            z-index:5;
+        }
+        
+        #progress{
+            position:fixed;
+            top:10px;
+            left:10px;
+            background:rgba(255,255,255,0.8);
+            padding:10px;
+            border-radius:5px;
+            z-index:100;
+        }
+        
+        .word-span{
+            position:relative;
+            display:inline-block;
+            margin-right:5px;
+        }
+        
+        /* Style for words waiting to be read */
+        .pending{
+            color:rgb(203, 203, 203);
+        }
+        
+        /* Style for the current word */
+        .current{
+            color:black;
+        }
+        
+        /* Style for words that have been read */
+        .read{
+            visibility:hidden;
+        }
+        
+        /* Style for individual letters */
+        .letter{
+            position:relative;
+            display:inline-block;
+            transform-origin:center;
+            color:inherit;
+            filter:drop-shadow(0 0 1px rgba(0,0,0,0.1));
+            transition:transform 0.05s cubic-bezier(.16,0,.11,1);
+        }
+        
+        /* Animation ready state for letters */
+        .letter .ready-to-animate{
+            position:absolute;
+        }
+        
+        /* Style for punctuation */
+        .punctuation{
+            display:inline-block;
+            margin-right:0;
+        }
+    </style>
+</head>
+<body>   
+    <div class="container">
+        <div id="progress">Words read: <span id="wordsRead">0</span> / <span id="totalWords">0</span></div>
+        <div id="debugInfo"></div>
+        
+        <div id="readingPrompt">
+            Bart Simpson is a fictional character in the American animated television series The Simpsons who is part of the Simpson family.
+        </div>
+        
+        <div id="controls">
+            <button id="startBtn">start</button>
+            <button id="stopBtn" disabled>stop</button>
+            <button id="clearBtn">reset</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const debugInfo = document.getElementById('debugInfo');
+            const readingPrompt = document.getElementById('readingPrompt');
+            const wordsReadDisplay = document.getElementById('wordsRead');
+            const totalWordsDisplay = document.getElementById('totalWords');
+            
+            // Check browser support
+            if(!('webkitSpeechRecognition' in window)){
+                alert('Speech recognition not supported in this browser. Please try Chrome.');
+                return;
+            }
+
+            // Prepare the reading text
+            const readingText = readingPrompt.innerText.trim();
+            const textWords = readingText.split(/\s+/);
+            
+            // Update total words count
+            totalWordsDisplay.textContent = textWords.length;
+            
+            // Create spans for each word and letter in the reading prompt
+            readingPrompt.innerHTML = '';
+            textWords.forEach((word, index) => {
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'word-span pending';
+                wordSpan.dataset.index = index;
+                wordSpan.dataset.word = word.toLowerCase().replace(/[^\w]/g, ''); // Clean word for matching
+                
+                // Create spans for each letter in the word
+                for (let i = 0; i < word.length; i++) {
+                    const letterSpan = document.createElement('span');
+                    letterSpan.className = 'letter';
+                    letterSpan.textContent = word[i];
+                    letterSpan.dataset.index = i;
+                    wordSpan.appendChild(letterSpan);
+                }
+                
+                // Add space after word
+                if (word.match(/[.,;:!?]$/)) {
+                    // For words ending with punctuation, add different spacing
+                    const punctuationSpan = document.createElement('span');
+                    punctuationSpan.className = 'punctuation';
+                    punctuationSpan.textContent = ' ';
+                    readingPrompt.appendChild(wordSpan);
+                    readingPrompt.appendChild(punctuationSpan);
+                } else {
+                    const spaceSpan = document.createElement('span');
+                    spaceSpan.textContent = ' ';
+                    wordSpan.appendChild(spaceSpan);
+                    readingPrompt.appendChild(wordSpan);
+                }
+            });
+
+            // State variables
+            let isListening = false;
+            let previousTranscript = "";
+            let animatedWords = new Set();
+            let wordsRead = 0;
+            let currentWordIndex = 0;
+            
+            // Mark the first word as current
+            const firstWord = readingPrompt.querySelector('.word-span');
+            
+            if(firstWord) {
+                firstWord.classList.add('current');
+                firstWord.classList.remove('pending');
+            }
+            
+            // Keep track of animation count to create unique identifiers
+            let animationCount = 0;
+            
+            // Debug function
+            function debug(msg){
+                debugInfo.textContent = msg;
+                console.log(msg);
+            }
+
+            function animateLettersFrom(element){
+                if(!element) return;
+                
+                const word = element.dataset.word;
+                if(!word || word.length === 0) return;
+                
+                debug(`Animating word: ${word}`);
+                
+                // Get all letters in the word
+                const letters = element.querySelectorAll('.letter');
+                if(!letters.length) return;
+                
+                // Base animation parameters
+                const letterAnimDuration = 1; // seconds
+                const letterDelayIncrement = 0.1; // seconds
+                
+                // Create a clone of each letter for animation and keep original in place
+                letters.forEach((letter, i) => {
+                    const rect = letter.getBoundingClientRect();
+                    
+                    // Create a clone of the letter for animation
+                    const clone = letter.cloneNode(true);
+                    
+                    // Make the original letter invisible but keep it in the flow
+                    letter.style.visibility = 'hidden';
+                    
+                    // Position the clone exactly where the original was
+                    clone.style.position = 'fixed';
+                    clone.style.left = `${rect.left}px`;
+                    clone.style.top = `${rect.top}px`;
+                    clone.style.width = `${rect.width}px`;
+                    clone.style.height = `${rect.height}px`;
+                    clone.style.zIndex = '200';
+                    clone.style.margin = '0';
+                    clone.style.padding = '0';
+                    
+                    // Add the clone to the body
+                    document.body.appendChild(clone);
+                    
+                    // Random direction and distance
+                    const angle = Math.random() * Math.PI * 2; // Random angle in radians
+                    const distance = -10 + Math.random() * 20; // Random distance
+
+                    // Calculate end position
+                    const endX = Math.cos(angle) * distance;
+                    const endY = Math.sin(angle) * distance;
+                    
+                    // Random rotation
+                    const rotation = -45 + Math.random() * 90; // -45 to 45 degrees
+                    
+                    // Calculate delay
+                    const delay = i * letterDelayIncrement;
+                    
+                    // Create unique animation
+                    const uniqueAnimId = `letter_anim_${animationCount}_${i}`;
+                    const styleSheet = document.styleSheets[0];
+                    const keyframes = `@keyframes ${uniqueAnimId}{
+                        0%{
+                            transform:translate(0, 0) rotate(0deg);
+                            filter:blur(0px);
+                        }
+                        20%{
+                            filter:blur(1px);
+                        }
+                        100%{
+                            transform:translate(${endX}px, ${endY}px) rotate(${rotation}deg);
+                            filter:blur(0px);
+                        }
+                    }`;
+                    
+                    styleSheet.insertRule(keyframes, styleSheet.cssRules.length);
+                    
+                    // Apply animation to the clone
+                    clone.style.animation = `${uniqueAnimId} ${letterAnimDuration}s ${delay}s forwards cubic-bezier(.16,0,.11,1)`;
+                    
+                    // Remove the clone after animation completes
+                    // setTimeout(() => {
+                    //     clone.remove();
+                    // }, (letterAnimDuration + delay) * 1000 + 100);
+                });
+                
+                // mark word as read
+                element.classList.remove('current');
+                element.classList.add('read');
+                
+                // increment animation counter
+                animationCount++;
+                
+                // update word counter
+                wordsRead++;
+                wordsReadDisplay.textContent = wordsRead;
+                
+                // Move to next word
+                if(currentWordIndex < textWords.length - 1){
+                    currentWordIndex++;
+                    const nextWordElement = readingPrompt.querySelector(`.word-span[data-index="${currentWordIndex}"]`);
+                    if(nextWordElement){
+                        nextWordElement.classList.remove('pending');
+                        nextWordElement.classList.add('current');
+                        
+                        // Scroll to keep the current word visible
+                        nextWordElement.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+                    }
+                }
+            }
+
+            // Create a new recognition instance for each session
+            function createRecognition(){
+                const recognition = new webkitSpeechRecognition();
+                
+                // Configure
+                recognition.lang = 'en-US';
+                recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+                
+                // Force very short recognition segments
+                recognition.continuous = false;
+                
+                // Event handlers
+                recognition.onstart = () => {
+                    debug("Recognition started");
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    startBtn.classList.add('disabled');
+                    stopBtn.classList.remove('disabled');
+                };
+                
+                // Process results word by word as they come in
+                recognition.onresult = (event) => {
+                    const result = event.results[0][0].transcript.trim().toLowerCase();
+                    debug(`Heard: "${result}"`);
+                    
+                    if(result && result !== previousTranscript){
+                        // Get the current word element that needs to be read
+                        const currentWordElement = readingPrompt.querySelector('.current');
+                        if(currentWordElement){
+                            const currentWord = currentWordElement.dataset.word.toLowerCase();
+                            
+                            // Check if any words in the result match the current word
+                            const resultWords = result.split(/\s+/);
+                            const foundMatch = resultWords.some(word => {
+                                const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+                                return cleanWord === currentWord;
+                            });
+                            
+                            if(foundMatch && !animatedWords.has(currentWord)){
+                                debug(`Recognized correct word: ${currentWord}`);
+                                animateLettersFrom(currentWordElement);
+                                animatedWords.add(currentWord);
+                            }
+                        }
+                        
+                        previousTranscript = result;
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    debug(`Error: ${event.error}`);
+                    console.error('Speech recognition error', event.error);
+                    
+                    if(isListening){
+                        // Restart recognition after a short delay
+                        setTimeout(() => {
+                            startRecognition();
+                        }, 300);
+                    }
+                };
+                
+                recognition.onend = () => {
+                    debug("Recognition ended");
+                    
+                    if(isListening){
+                        // Clear previous transcript between sessions to avoid duplicates
+                        previousTranscript = "";
+                        
+                        // Restart recognition immediately
+                        setTimeout(() => {
+                            startRecognition();
+                        }, 10);
+                    } else {
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        startBtn.classList.remove('disabled');
+                        stopBtn.classList.add('disabled');
+                    }
+                };
+                
+                return recognition;
+            }
+            
+            // Initialize recognition
+            let recognition = createRecognition();
+            
+            // Function to start recognition
+            function startRecognition(){
+                if(!isListening) return;
+                
+                // Create new recognition instance each time
+                recognition = createRecognition();
+                
+                try{
+                    recognition.start();
+                    debug("Listening for speech...");
+                } catch(e){
+                    debug(`Error starting: ${e.message}`);
+                    // If there's an error, wait a bit longer before trying again
+                    setTimeout(() => {
+                        startRecognition();
+                    }, 500);
+                }
+            }
+
+            // Button event listeners
+            startBtn.addEventListener('click', () => {
+                isListening = true;
+                previousTranscript = "";
+                startRecognition();
+            });
+
+            stopBtn.addEventListener('click', () => {
+                isListening = false;
+                recognition.stop();
+                debug("Stopped by user");
+            });
+
+            clearBtn.addEventListener('click', () => {
+                // Reset all animations
+                const flyingLetters = document.querySelectorAll('body > .letter');
+                flyingLetters.forEach(letter => letter.remove());
+                
+                // Ensure all original letters are visible again
+                const allLetters = document.querySelectorAll('.letter');
+                allLetters.forEach(letter => letter.style.visibility = '');
+                
+                // Reset counter
+                wordsRead = 0;
+                wordsReadDisplay.textContent = '0';
+                currentWordIndex = 0;
+                animatedWords.clear();
+                
+                // Reload the text to reset it
+                location.reload();
+            });
+        });
+    </script>
+</body>
+</html>

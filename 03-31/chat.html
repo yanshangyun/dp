@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chat</title>
+    <style>
+        /* @font-face {
+            font-family:"pantasia";
+            src:url(/pantasia.otf);
+        } */
+
+        body{
+            font-family:Arial, Helvetica, sans-serif;
+            text-align:left;
+            margin:0;
+            padding:20px;
+            height:100vh;
+            display:flex;
+            flex-direction:column;
+        }
+
+        h2{
+            margin-top:0;
+        }
+
+        #chat-container{
+            flex:1;
+            display:flex;
+            flex-direction:column;
+            width:100%;
+            max-width:600px;
+            margin:0 auto;
+            overflow:hidden;
+        }
+
+        #chat{
+            flex:1;
+            overflow-y:auto;
+            padding:10px;
+        }
+        
+        .message{
+            margin-bottom:10px;
+            word-wrap:break-word;
+        }
+        
+        .message .timestamp{
+            color:#888;
+            font-size:0.8em;
+        }
+        
+        .message .username{
+            font-weight:bold;
+        }
+        
+        .draft-message{
+            opacity:0.3;
+        }
+        
+        .input-area{
+            display:flex;
+            border:1px solid #000000;
+            background-color:#fff;
+            font-family:Arial, Helvetica, sans-serif;
+        }
+        
+        #message{
+            flex:1;
+            padding:10px;
+            border:none;
+            outline:none;
+            resize:none;
+            font-family:Arial, Helvetica, sans-serif;
+        }
+        
+        .buttons{
+            display:flex;
+            padding:5px;
+        }
+
+        button{
+            margin:2px;
+            background-color:#f0f0f0;
+            border:1px solid black;
+            cursor:pointer;
+        }
+        
+        button:hover{
+            background-color:#e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <h2>chat</h2>
+    <div id="chat-container">
+        <div id="chat"></div>
+        <div class="input-area">
+            <textarea id="message" placeholder="Type a message..." rows="1"></textarea>
+            <div class="buttons">
+                <button onclick="sendMessage()">send</button>
+                <button onclick="clearChat()">clear</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, remove, set, onValue } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+    
+        // Firebase configuration (replace with your actual config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain: "chat-f7267.firebaseapp.com",
+            databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId: "chat-f7267",
+            storageBucket: "chat-f7267.firebasestorage.app",
+            messagingSenderId: "393364272511",
+            appId: "1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId: "G-X3PF8YJYT8"
+        };
+    
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const chatRef = ref(db, "messages");
+        const typingRef = ref(db, "typing");
+        
+        // Generate a unique user ID for this session
+        const userId = "user_" + Math.random().toString(36).substr(2, 9);
+        let userName = "User " + userId.slice(-4);
+        
+        // // Optional: Let user set their name
+        // const storedName = localStorage.getItem("chatUserName");
+        // if (storedName) {
+        //     userName = storedName;
+        // } else {
+        //     const promptedName = prompt("Enter your name:", userName);
+        //     if (promptedName && promptedName.trim() !== "") {
+        //         userName = promptedName.trim();
+        //         localStorage.setItem("chatUserName", userName);
+        //     }
+        // }
+        
+        // Track draft messages by user ID
+        const draftMessages = {};
+        
+        // Auto-resize textarea
+        const textarea = document.getElementById("message");
+        textarea.addEventListener("input", function() {
+            this.style.height = "auto";
+            this.style.height = (this.scrollHeight) + "px";
+        });
+        
+        // function to update typing status
+        function updateTypingStatus(text) {
+            if (text.trim() === "") {
+                // remove typing status when input is empty
+                remove(ref(db, `typing/${userId}`));
+            } else {
+                // update typing status with current text
+                set(ref(db, `typing/${userId}`), {
+                    user: userName,
+                    text: text,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // listen for input changes with debounce
+        let typingTimeout;
+        textarea.addEventListener("input", function() {
+            clearTimeout(typingTimeout);
+            const inputText = this.value;
+            
+            // Update typing status immediately
+            updateTypingStatus(inputText);
+            
+            // Clear typing status after 2 seconds of inactivity
+            typingTimeout = setTimeout(() => {
+                if (textarea.value === inputText) {
+                    remove(ref(db, `typing/${userId}`));
+                }
+            }, 2000);
+        });
+        
+        // Listen for new messages
+        onChildAdded(chatRef, (snapshot) => {
+            const chat = document.getElementById("chat");
+            const data = snapshot.val();
+            
+            // Format the timestamp if available
+            let timeString = "";
+            if (data.timestamp) {
+                const messageDate = new Date(data.timestamp);
+                timeString = messageDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            }
+            
+            // Create message element
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message";
+            messageDiv.dataset.userId = data.userId || "unknown";
+            messageDiv.innerHTML = `
+                <span class="text">${data.text}</span>
+            `;
+
+            // <span class="timestamp">[${timeString}]</span>
+            // <span class="username">${data.user || "Anonymous"}:</span>
+            
+            // Remove any draft message from this user before adding the real message
+            const draftElement = document.getElementById(`draft-${data.userId}`);
+            if (draftElement) {
+                draftElement.remove();
+            }
+            
+            chat.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chat.scrollTop = chat.scrollHeight;
+            
+            // Remove typing indicator for this user if they just sent a message
+            if (data.userId === userId) {
+                remove(ref(db, `typing/${userId}`));
+            }
+        });
+        
+        // Listen for typing status changes
+        onValue(typingRef, (snapshot) => {
+            const chat = document.getElementById("chat");
+            const typingUsers = snapshot.val() || {};
+            
+            // Get the current set of typing user IDs
+            const currentTypingIds = Object.keys(typingUsers);
+            
+            // Remove draft messages that are no longer being typed
+            Object.keys(draftMessages).forEach(uid => {
+                if (!currentTypingIds.includes(uid)) {
+                    const draftElement = document.getElementById(`draft-${uid}`);
+                    if (draftElement) {
+                        draftElement.remove();
+                        delete draftMessages[uid];
+                    }
+                }
+            });
+            
+            // Update or add draft messages for currently typing users
+            currentTypingIds.forEach(uid => {
+                // Skip our own typing
+                if (uid === userId) return;
+                
+                const typingData = typingUsers[uid];
+                const now = Date.now();
+                
+                // Check if typing status is recent (within last 5 seconds)
+                if (typingData.timestamp && now - typingData.timestamp < 5000 && typingData.text && typingData.text.trim() !== "") {
+                    // Create or update draft message
+                    let draftElement = document.getElementById(`draft-${uid}`);
+                    
+                    if (!draftElement) {
+                        // Create new draft element
+                        draftElement = document.createElement("div");
+                        draftElement.className = "draft-message";
+                        draftElement.id = `draft-${uid}`;
+                        chat.appendChild(draftElement);
+                        
+                        // Record that we've created this draft message
+                        draftMessages[uid] = true;
+                    }
+                    
+                    // Update the content
+                    draftElement.innerHTML = `
+                        <span class="text">${typingData.text}</span>
+                    `;
+                    
+                    // Scroll to show the draft message
+                    chat.scrollTop = chat.scrollHeight;
+                }
+            });
+        });
+        
+        // Attach function to window so it can be called from onclick
+        window.sendMessage = function() {
+            if (textarea.value.trim() !== "") {
+                // Store the message with user info and timestamp
+                push(chatRef, {
+                    user: userName,
+                    userId: userId,
+                    text: textarea.value,
+                    timestamp: Date.now()
+                });
+                textarea.value = "";
+                textarea.style.height = "auto";
+                
+                // Clear typing status when message is sent
+                remove(ref(db, `typing/${userId}`));
+            }
+        };
+        
+        // Add event listener for Enter key (but allow shift+enter for new line)
+        textarea.addEventListener("keypress", function(event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                window.sendMessage();
+            }
+        });
+
+        window.clearChat = function() {
+            // Clear both the display and Firebase database
+            document.getElementById("chat").innerHTML = "";
+            remove(chatRef).then(() => {
+                console.log("Chat history cleared from Firebase");
+            }).catch((error) => {
+                console.error("Error clearing chat history:", error);
+            });
+        };
+        
+        // Clean up typing status when user leaves the page
+        window.addEventListener("beforeunload", function() {
+            remove(ref(db, `typing/${userId}`));
+        });
+    </script>
+</body>
+</html>

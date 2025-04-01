@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>speech to text</title>
+    <style>
+        @font-face {
+            font-family:"pantasia";
+            src:url("/pantasia.otf") format("opentype");
+        }
+        
+        body{
+            font-family:pantasia;
+            margin:0;
+            padding:0;
+            overflow:hidden;
+            height:100vh;
+            width:100vw;
+            background-color:white;
+        }
+
+        .container{
+            position:relative;
+            width:100%;
+            height:100%;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+        }
+
+        #visualContainer{
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+        }
+
+        .word{
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            display:flex;
+            font-size:2rem;
+        }
+
+        .letter{
+            position:absolute;
+            display:inline-block;
+            transform-origin:center;
+            color:rgb(163, 163, 163);
+            filter:drop-shadow(0 0 2px rgb(149, 149, 149));
+            background-color:rgb(221, 221, 221);
+            mix-blend-mode:multiply;
+            opacity:0; /* Start hidden */
+        }
+
+        #controls{
+            position:fixed;
+            bottom:20px;
+            width:100%;
+            display:flex;
+            justify-content:center;
+            z-index:10;
+        }
+
+        button{
+            margin:5px;
+            padding:10px 15px;
+            background-color:#fff;
+            border:1px solid #dadada;
+            cursor:pointer;
+        }
+
+        button:hover:not(:disabled){
+            background-color:black;
+            color:white;
+        }
+
+        .disabled{
+            opacity:0.5;
+            cursor:not-allowed;
+        }
+
+        #transcript{
+            position:fixed;
+            bottom:80px;
+            width:80%;
+            max-width:500px;
+            height:100px;
+            padding:10px;
+            border:none;
+            border-radius:5px;
+            resize:none;
+            z-index:10;
+            background-color:rgba(255, 255, 255, 0);
+            font-family:pantasia;
+            text-align:center;
+            pointer-events:none;
+        }
+        
+        #debugInfo {
+            position:fixed;
+            top:10px;
+            right:10px;
+            background:rgba(255,255,255,0.8);
+            padding:5px;
+            font-size:12px;
+            z-index:100;
+        }
+    </style>
+</head>
+<body>   
+    <div class="container">
+        <div id="visualContainer"></div>
+        <textarea id="transcript" readonly placeholder="trasnscript..."></textarea>
+        <div id="debugInfo"></div>
+        <p style="margin:50px; z-index:-100; color:rgb(230, 230, 230);">
+            Design is not an answer, nor is it a question. It's a component of dialogue—of conversation. By nature, graphic design is disruptive in its reflection of culture. Our rivers pool into the lake of culture. When we try to "answer" with design, we scrape the surface of our own lives and provide little droplets into the lake of discourse. It's ineffective. How can you feel the temperature of the lake if you just dip your toes? We should go swimming.
+
+Design is never a solution. Like conversation, it can be awkward, tense, ineffective, outright bad. Maybe we said something we didn't mean to. Maybe we're just not clicking. Maybe it's getting late and we should end it here. Maybe we should just talk later. This is the natural rhythm of exchange—when something isn't working out, we talk about it more. We make space to negotiate alternate navigation and explore new intersections of our expectations. We’re lost on this hike, but I want to keep walking even if the trail map has been washed out.
+
+Ineffective design stays at the surface level. Small talk only comments on the immediate world around us: the weather, the news—reference points we can assume as commonplace. We're all laughing and smiling, but we also know it's the performance of acquaintanceship that pulls our cheeks outwards. You ask me something someone else has already asked me in the elevator—I already know how to answer and you don’t really care. We both know this ends soon. There is no conversation, no rivers, no hike, no getting lost—just a little box that carries us to where we need to be.
+
+In this instance, language becomes a tool for breaking silence—a pickaxe against ice—it loses its malleable nature and freezes over on the surface. When we design for solutions, we maintain a buffer that keeps us intimate enough to eavesdrop but distant enough to stay untouched—clean, polished, presentable. I’m not interested in your passive observation. Who are you?
+
+I want to uphold design as an invitation, as a practice that creates spaces where meaning is negotiated together rather than delivered from a safe distance. I don’t have solutions or answers for you. I design to know us better.
+
+        </p>
+        
+        <div id="controls">
+            <button id="startBtn">start</button>
+            <button id="stopBtn" disabled>stop</button>
+            <button id="clearBtn">clear</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded',()=>{
+            const transcriptArea = document.getElementById('transcript');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const visualContainer = document.getElementById('visualContainer');
+            const debugInfo = document.getElementById('debugInfo');
+            
+            // check browser support
+            if(!('webkitSpeechRecognition' in window)){
+                alert('Speech recognition not supported in this browser');
+                return;
+            }
+
+            // state variables
+            let isListening = false;
+            let previousTranscript = "";
+            let animatedWords = new Set();
+            
+            // Keep track of animation count to create unique identifiers
+            let animationCount = 0;
+            
+            // debug
+            function debug(msg) {
+                debugInfo.textContent = msg;
+                console.log(msg);
+            }
+
+            function createAnimatedWord(word) {
+                if (!word || word.length === 0) return;
+                
+                debug(`Animating word: ${word}`);
+                
+                // Create word element
+                const wordElement = document.createElement('div');
+                wordElement.className = 'word';
+                
+                // Random direction and distance for the whole word
+                const angle = Math.random() * Math.PI * 2; // Random angle in radians
+                const distance = 100 + Math.random() * 200; // Random distance between 100-300px
+                
+                // Calculate end position based on angle and distance
+                const endX = Math.cos(angle) * distance;
+                const endY = Math.sin(angle) * distance;
+                
+                // Base animation duration and delay between letters
+                const letterAnimDuration = 1; // seconds
+                const letterDelayIncrement = 0.1; // seconds
+                
+                // Add individual letters with their own rotation and position
+                for(let i = 0; i < word.length; i++) {
+                    const letterSpan = document.createElement('span');
+                    letterSpan.className = 'letter';
+                    letterSpan.textContent = word[i];
+                    
+                    const uniqueAnimId = `spin_${animationCount}_${i}`;
+                    
+                    // random rotation
+                    const rotation = -45 + Math.random() * 90; // -45 to 45 deg
+                    
+                    // position offset
+                    const letterOffsetX = -5 + Math.random() * 10; // -5 to 5 px
+                    const letterOffsetY = -15 + Math.random() * 30; // -15 to 15 px
+                    
+                    letterSpan.style.left = `calc(${i * 0.5}em + ${letterOffsetX}px)`;
+                    letterSpan.style.top = `${letterOffsetY}px`;
+                    
+                    // Calculate delay for this letter (sequential animation)
+                    const letterDelay = i * letterDelayIncrement;
+                    
+                    // Apply animation with delay to each letter
+                    letterSpan.style.animation = `${uniqueAnimId} ${letterAnimDuration}s ${letterDelay}s forwards cubic-bezier(.11,.71,.3,.95)`;
+                    
+                    // Store rotation on the element for reference
+                    letterSpan.dataset.rotation = rotation;
+                    
+                    // Create keyframe animation for this specific letter
+                    const styleSheet = document.styleSheets[0];
+                    const keyframes = `@keyframes ${uniqueAnimId} {
+                        0%{
+                            transform:rotate(0deg) scale(0.2);
+                            opacity:0;
+                            filter:blur(5px) drop-shadow(0);
+                        }
+                        100%{
+                            transform:rotate(${rotation}deg) scale(1);
+                            opacity:1;
+                            filter:blur(0) drop-shadow(0 0 10px #dadada);
+                        }
+                    }`;
+
+                    styleSheet.insertRule(keyframes, styleSheet.cssRules.length);
+                    
+                    wordElement.appendChild(letterSpan);
+                }
+                
+                // Add to container
+                visualContainer.appendChild(wordElement);
+                
+                // Total word animation duration (base time + time for all letters)
+                const totalAnimDuration = 1000;
+                
+                // Animate the word moving outward
+                wordElement.animate([
+                    { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 1 },
+                    { transform: `translate(calc(-50% + ${endX}px), calc(-50% + ${endY}px)) scale(1)`, opacity: 1 }
+                ], {
+                    duration: totalAnimDuration,
+                    easing: 'cubic-bezier(.11,.71,.3,.95)', // Spring-like easing
+                    fill: 'forwards'
+                });
+                
+                // Increment animation counter
+                animationCount++;
+            }
+
+            // Create a new recognition instance for each session
+            function createRecognition() {
+                const recognition = new webkitSpeechRecognition();
+                
+                // Configure
+                recognition.lang = 'en-US';
+                recognition.interimResults = true;
+                recognition.maxAlternatives = 1;
+                
+                // Force very short recognition segments
+                recognition.continuous = false;
+                
+                // Event handlers
+                recognition.onstart = () => {
+                    debug("Recognition started");
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    startBtn.classList.add('disabled');
+                    stopBtn.classList.remove('disabled');
+                };
+                
+                // Process results word by word as they come in
+                recognition.onresult = (event) => {
+                    const result = event.results[0][0].transcript.trim();
+                    debug(`Got result: "${result}"`);
+                    
+                    if (result && result !== previousTranscript) {
+                        // Find the new words by comparing with the previous transcript
+                        const allWords = result.split(/\s+/);
+                        const previousWords = previousTranscript.split(/\s+/);
+                        
+                        // Find words that are new in this result
+                        for (let i = 0; i < allWords.length; i++) {
+                            const word = allWords[i].toLowerCase();
+                            
+                            // Skip words we've already animated
+                            if (!animatedWords.has(word) && word.length > 0) {
+                                debug(`New word: ${word}`);
+                                createAnimatedWord(allWords[i]);
+                                animatedWords.add(word);
+                                
+                                // Add to transcript
+                                transcriptArea.value += allWords[i] + " ";
+                            }
+                        }
+                        
+                        previousTranscript = result;
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    debug(`Error: ${event.error}`);
+                    console.error('Speech recognition error', event.error);
+                    
+                    if (isListening) {
+                        // Restart recognition after a short delay
+                        setTimeout(() => {
+                            startRecognition();
+                        }, 300);
+                    }
+                };
+                
+                recognition.onend = () => {
+                    debug("Recognition ended");
+                    
+                    if (isListening) {
+                        // Clear previous transcript between sessions to avoid duplicates
+                        previousTranscript = "";
+                        
+                        // Restart recognition immediately
+                        setTimeout(() => {
+                            startRecognition();
+                        }, 10);
+                    } else {
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        startBtn.classList.remove('disabled');
+                        stopBtn.classList.add('disabled');
+                    }
+                };
+                
+                return recognition;
+            }
+            
+            // Initialize recognition
+            let recognition = createRecognition();
+            
+            // Function to start recognition
+            function startRecognition() {
+                if (!isListening) return;
+                
+                // Create new recognition instance each time
+                recognition = createRecognition();
+                
+                try {
+                    recognition.start();
+                    debug("Starting new recognition session");
+                } catch (e) {
+                    debug(`Error starting: ${e.message}`);
+                    // If there's an error, wait a bit longer before trying again
+                    setTimeout(() => {
+                        startRecognition();
+                    }, 500);
+                }
+            }
+
+            // Button event listeners
+            startBtn.addEventListener('click', () => {
+                isListening = true;
+                previousTranscript = "";
+                startRecognition();
+            });
+
+            stopBtn.addEventListener('click', () => {
+                isListening = false;
+                recognition.stop();
+                debug("Stopped by user");
+            });
+
+            clearBtn.addEventListener('click', () => {
+                transcriptArea.value = '';
+                previousTranscript = "";
+                animatedWords.clear();
+                visualContainer.innerHTML = '';
+                debug("Cleared");
+            });
+        });
+    </script>
+</body>
+</html>
