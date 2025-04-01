@@ -2,13 +2,8 @@
 <html lang="en">
 <head>
     <style>
-        @font-face{
-            font-family:"pantasia";
-            src:url("/pantasia.otf") format("opentype");
-        }
-
         body{
-            font-family:pantasia;
+            font-family:'Times New Roman', Times, serif;
         }
 
         .week-wrapper{
@@ -19,23 +14,26 @@
             justify-content:center;
             align-items:center;
         }
+
+        a{
+            transform:skewY(0);
+        }
+
+        a:hover{
+            font-style:italic;
+            letter-spacing:5px;
+            transform:skewY(-12deg);
+            transition:all 0.5s cubic-bezier(0.1, 0, 0.1, 1);
+        }
     </style>
 </head>
 <body>
-    <h1>Nothing in Between</h1>
-    <p>
-        What is the function of distance? Is it a measure, a boundary, an intersection, a binding force, a space that holds the in-between—a paradox of intimacy?
-
-Key Questions
-
-- How does digital communication renegotiate spatial, temporal, and emotional distance?
-- How can design materialize these abstract spatial relations?
-- Can computer-mediated communication become a more fluid, dynamic experience?
-- Can transcription evolve into a multiplayer, interactive poetic practice?
-    </p>
     <div class="week-wrapper">
-        <a href="03-04/speech-text.html">March 4</a>
-        <a href="03-04/speech-text.html">March 18</a>
+        <p>March 4</p>
+        <a href="03-04/speech-text.html">Speech to Text</a>
+        <p>March 31</p>
+        <a href="03-31/text-activate.html">Text "Activation"</a>
+        <a href="03-31/chat.html">Live Typing</a>
     </div>
 
     <script>
