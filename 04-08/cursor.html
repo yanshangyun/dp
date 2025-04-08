@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+  <meta charset="UTF-8">
+<head>
+  <title>Cursor Chat</title>
+  <style>
+    html, body{
+      margin:0;
+      height:100%;
+      background:white;
+      overflow:hidden;
+      cursor:cell;
+    }
+
+    .cursor{
+      position:absolute;
+      width:5px;
+      height:5px;
+      pointer-events:none;
+      z-index:10;
+    }
+
+    .text-char{
+      position:absolute;
+      font-size:16px;
+      transform:translate(-50%, -50%);
+      pointer-events:none;
+    }
+
+    #matter-container{
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      z-index:1;
+    }
+    
+    #instruction-text{
+      position:fixed;
+      bottom:20px;
+      right:20px;
+      z-index:100;
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+  <div id="matter-container"></div>
+  <div id="instruction-text">press ENTER to realign</div>
+
+  <!--firebase-->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <!--matter.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+
+  <script>
+    // firebase config
+    const firebaseConfig = {
+      apiKey:"AIzaSyDAFC3PKC_gaazz6wJjI5JYJzXeUnKVBDo",
+      authDomain:"cursor-52ebb.firebaseapp.com",
+      databaseURL:"https://cursor-52ebb-default-rtdb.firebaseio.com",
+      projectId:"cursor-52ebb",
+      storageBucket:"cursor-52ebb.firebasestorage.app",
+      messagingSenderId:"342200199369",
+      appId:"1:342200199369:web:775ef100263bf9e5f44518",
+      measurementId:"G-QVMQY5MBLN"
+    };
+
+    // initialize firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // setup users
+    const userId = Math.random().toString(36).substring(2, 10); // random id
+    const userColor = "#" + Math.floor(Math.random()*16777215).toString(16); // random color
+    const cursorsRef = db.ref("cursors");
+    
+    // data tracking
+    const cursors = {};
+    const charElements = {};
+    let currentText = "";
+    let mouseX = 0, mouseY = 0;
+    
+    // text length limit
+    const maxTextLength = 20;
+    
+    // initialize matter.js
+    const Engine = Matter.Engine;
+    const Render = Matter.Render;
+    const Runner = Matter.Runner;
+    const Bodies = Matter.Bodies;
+    const Composite = Matter.Composite;
+    const Constraint = Matter.Constraint;
+    
+    // create engine
+    const engine = Engine.create({
+      gravity:{x:0, y:0}
+    });
+    
+    // create renderer
+    const render = Render.create({
+      element: document.getElementById('matter-container'),
+      engine: engine,
+      options:{
+        width: window.innerWidth,
+        height: window.innerHeight,
+        wireframes: false,
+        background: 'transparent'
+      }
+    });
+    
+    // run renderer and engine
+    Render.run(render);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+    
+    // physics objects storage
+    const physicsChains = {};
+    
+    // create a physics chain for text
+    function createTextChain(userId, text, x, y) {
+      // store previous chain info before removing
+      const previousChain = physicsChains[userId];
+      let previousBodies = [];
+      let lastPosition = null;
+      
+      if (previousChain && previousChain.text && text.startsWith(previousChain.text)) {
+        previousBodies = [...previousChain.bodies];
+        if (previousBodies.length > 0) {
+          const lastBody = previousBodies[previousBodies.length - 1];
+          lastPosition = {
+            x: lastBody.position.x + 15, // position for new character
+            y: lastBody.position.y
+          };
+        }
+      }
+      
+      // remove existing chain if any
+      if (previousChain) {
+        Composite.remove(engine.world, previousChain.composite);
+        delete physicsChains[userId];
+      }
+      
+      if (!text) return null;
+      
+      // create physics objects for text
+      const bodies = [];
+      const constraints = [];
+      const composite = Composite.create();
+      
+      // create circle bodies for each character
+      for (let i = 0; i < text.length; i++) {
+        let startX, startY;
+        
+        if (i < previousBodies.length) {
+          // reuse position from previous body for existing characters
+          startX = previousBodies[i].position.x;
+          startY = previousBodies[i].position.y;
+        } else if (lastPosition && i === previousBodies.length) {
+          // for the first new character, use position after the last previous character
+          startX = lastPosition.x;
+          startY = lastPosition.y;
+        } else if (i === 0) {
+          // for first character if no previous chain exists
+          startX = x + 15; // start slightly to the right of cursor
+          startY = y;
+        } else {
+          // for subsequent new characters, position after the last one
+          startX = bodies[i-1].position.x + 15;
+          startY = bodies[i-1].position.y;
+        }
+        
+        const body = Bodies.circle(startX, startY, 8, {
+          friction: 0.05,
+          frictionAir: 0.1,
+          restitution: 0.2,
+          render:{
+            fillStyle: 'transparent',
+            strokeStyle: 'transparent'
+          }
+        });
+        
+        bodies.push(body);
+      }
+      
+      // form chains
+      for (let i = 0; i < bodies.length - 1; i++) {
+        const constraint = Constraint.create({
+          bodyA: bodies[i],
+          bodyB: bodies[i+1],
+          stiffness: 0.05,
+          damping: 0.1,
+          length: 15,
+          render:{
+            visible: false
+          }
+        });
+        
+        constraints.push(constraint);
+      }
+      
+      // connect to cursor
+      if (bodies.length > 0) {
+        const leadConstraint = Constraint.create({
+          pointA:{x, y},
+          bodyB: bodies[0],
+          stiffness: 0.01,
+          damping: 0.1,
+          length: 10,
+          render:{
+            visible: false
+          }
+        });
+        
+        constraints.push(leadConstraint);
+      }
+      
+      // add to canvas
+      Composite.add(composite, [...bodies, ...constraints]);
+      Composite.add(engine.world, composite);
+      
+      // store and return the chain
+      physicsChains[userId] = {
+        bodies,
+        constraints,
+        composite,
+        leadConstraint: constraints[constraints.length - 1],
+        text: text
+      };
+      
+      return physicsChains[userId];
+    }
+    
+    // update physics chain anchor point (cursor position)
+    function updateChainAnchor(userId, x, y) {
+      const chain = physicsChains[userId];
+      if (chain && chain.leadConstraint) {
+        chain.leadConstraint.pointA = {x, y};
+      }
+    }
+    
+    // create or update cursor display for a user
+    function updateCursor(id, data) {
+      if (id === userId) return; // hide own cursor
+      
+      // create cursor element if it doesn't exist
+      if (!cursors[id]) {
+        const cursorEl = document.createElement("div");
+        cursorEl.className = "cursor";
+        cursorEl.style.background = data.color || "#FF0000";
+        document.body.appendChild(cursorEl);
+        cursors[id] = cursorEl;
+        
+        // initialize character elements array
+        charElements[id] = [];
+      }
+      
+      // update cursor position
+      cursors[id].style.left = data.x + "px";
+      cursors[id].style.top = data.y + "px";
+      
+      // create or update chain
+      if (data.text !== undefined) {
+        // if no chain exists or text changed, create a new chain
+        const existingChain = physicsChains[id];
+        if (!existingChain || !existingChain.text || existingChain.text !== data.text) {
+          createTextChain(id, data.text, data.x, data.y);
+          
+          // update text display
+          updateTextDisplay(id, data.text, data.color);
+        }
+      }
+      
+      // always update chain anchor point
+      updateChainAnchor(id, data.x, data.y);
+    }
+    
+    // update the visible text elements
+    function updateTextDisplay(id, text, color) {
+      // clear existing character elements
+      charElements[id] = charElements[id] || [];
+      charElements[id].forEach(char => {
+        if (char.parentNode) {
+          char.parentNode.removeChild(char);
+        }
+      });
+      charElements[id] = [];
+      
+      // create new character elements
+      for (let i = 0; i < text.length; i++) {
+        const charEl = document.createElement("span");
+        charEl.className = "text-char";
+        charEl.textContent = text[i];
+        charEl.style.color = color || "#FF0000";
+        document.body.appendChild(charEl);
+        charElements[id].push(charEl);
+      }
+    }
+    
+    // animation loop to update character positions based on physics
+    function animate() {
+      // update character positions for each user's text
+      Object.keys(physicsChains).forEach(id => {
+        const chain = physicsChains[id];
+        const chars = charElements[id] || [];
+        
+        // match character elements to physics bodies
+        for (let i = 0; i < chars.length && i < chain.bodies.length; i++) {
+          const char = chars[i];
+          const body = chain.bodies[i];
+          
+          if (char && body) {
+            char.style.left = body.position.x + "px";
+            char.style.top = body.position.y + "px";
+          }
+        }
+      });
+      
+      requestAnimationFrame(animate);
+    }
+    
+    // start animation
+    animate();
+    
+    // listen for cursor updates
+    cursorsRef.on("value", snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+      
+      // process all cursors
+      Object.keys(data).forEach(id => {
+        if (id !== userId) {
+          updateCursor(id, data[id]);
+        }
+      });
+    });
+    
+    // track mouse movement
+    document.addEventListener("mousemove", e => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      
+      // update our chain anchor point
+      updateChainAnchor(userId, mouseX, mouseY);
+      
+      // throttle firebase updates
+      if (!document.mouseMoveTimer) {
+        document.mouseMoveTimer = setTimeout(() => {
+          updateFirebase(false); // false means don't update text, just position
+          document.mouseMoveTimer = null;
+        }, 25); // 25ms throttling
+      }
+    });
+    
+    // handle keyboard input
+    document.addEventListener("keydown", e => {
+      const previousText = currentText;
+      
+      // check if enter was pressed to realign text
+      if (e.key === "Enter") {
+        // if there's text, realign it
+        if (currentText.length > 0) {
+          realignText(userId);
+        } else {
+          // if no text, do nothing
+        }
+        return;
+      } else if (e.key === "Escape") {
+        currentText = "";
+      } else if (e.key === "Backspace") {
+        currentText = currentText.slice(0, -1);
+      } else if (e.key.length === 1) { // regular character
+        // limit text length
+        if (currentText.length >= maxTextLength) {
+          currentText = currentText.slice(1) + e.key; // remove first char, add new one
+        } else {
+          currentText += e.key;
+        }
+      } else {
+        return; // skip for other keys
+      }
+      
+      // only update physics and display if text actually changed
+      if (previousText !== currentText) {
+        // update our own text physics and display
+        createTextChain(userId, currentText, mouseX, mouseY);
+        updateTextDisplay(userId, currentText, userColor);
+        
+        // always update firebase with new text
+        updateFirebase(true);
+      }
+    });
+    
+    // update data in firebase
+    function updateFirebase(includeText) {
+      const data = {
+        x: mouseX,
+        y: mouseY,
+        color: userColor
+      };
+      
+      // only include text if requested (for throttling mouse moves)
+      if (includeText) {
+        data.text = currentText;
+      }
+      
+      cursorsRef.child(userId).set(data);
+    }
+    
+    // clean up on disconnect
+    cursorsRef.child(userId).onDisconnect().remove();
+    
+    // handle window resize
+    window.addEventListener("resize", () => {
+      render.options.width = window.innerWidth;
+      render.options.height = window.innerHeight;
+      Render.setPixelRatio(render, window.devicePixelRatio);
+    });
+    
+    // function to realign text in a clean line
+    function realignText(userId) {
+      const chain = physicsChains[userId];
+      if (!chain || !chain.bodies || chain.bodies.length === 0) return;
+      
+      // get current cursor position
+      const cursorX = chain.leadConstraint.pointA.x;
+      const cursorY = chain.leadConstraint.pointA.y;
+      
+      // realign text chain
+      for (let i = 0; i < chain.bodies.length; i++) {
+        const body = chain.bodies[i];
+        const spacing = 15; // consistent spacing between characters
+        
+        // set new position - characters will form a straight line to the right of cursor
+        const newX = cursorX + (i + 1) * spacing;
+        const newY = cursorY;
+        
+        // reset velocity to prevent movement from previous forces
+        Matter.Body.setVelocity(body, { x: 0, y: 0 });
+        // set the new position
+        Matter.Body.setPosition(body, { x: newX, y: newY });
+      }
+      
+      // send a special "realigned" message to firebase
+      if (userId === window.userId) { // only do this for the local user
+        // save the fact that text was realigned
+        window.textWasRealigned = true;
+        
+        // update firebase with realigned flag
+        updateFirebase(true);
+        
+        // reset the flag after a short delay
+        setTimeout(() => {
+          window.textWasRealigned = false;
+        }, 100);
+      }
+    }
+
+    // modify updateFirebase to include realignment info
+    function updateFirebase(includeText) {
+      const data = {
+        x: mouseX,
+        y: mouseY,
+        color: userColor
+      };
+      
+      // only include text if requested (for throttling mouse moves)
+      if (includeText) {
+        data.text = currentText;
+        
+        // if text was realigned, include that info
+        if (window.textWasRealigned) {
+          data.realigned = true;
+        }
+      }
+      
+      cursorsRef.child(userId).set(data);
+    }
+
+    // modify updateCursor to handle realignment info
+    function updateCursor(id, data) {
+      if (id === userId) return; // hide own cursor
+      
+      // create cursor element if it doesn't exist
+      if (!cursors[id]) {
+        const cursorEl = document.createElement("div");
+        cursorEl.className = "cursor";
+        cursorEl.style.background = data.color || "#FF0000";
+        document.body.appendChild(cursorEl);
+        cursors[id] = cursorEl;
+        
+        // initialize character elements array
+        charElements[id] = [];
+      }
+      
+      // update cursor position
+      cursors[id].style.left = data.x + "px";
+      cursors[id].style.top = data.y + "px";
+      
+      // check if this update includes realignment info
+      const wasRealigned = data.realigned === true;
+      
+      // create or update chain
+      if (data.text !== undefined) {
+        // if no chain exists or text changed, create a new chain
+        const existingChain = physicsChains[id];
+        if (!existingChain || !existingChain.text || existingChain.text !== data.text) {
+          createTextChain(id, data.text, data.x, data.y);
+          
+          // update text display
+          updateTextDisplay(id, data.text, data.color);
+        }
+        
+        // if text was realigned, apply the realignment
+        if (wasRealigned) {
+          realignText(id);
+        }
+      }
+      
+      // always update chain anchor point
+      updateChainAnchor(id, data.x, data.y);
+    }
+
+    // add initialization for the realignment flag
+    window.textWasRealigned = false;
+    window.userId = userId; // make userId accessible globally
+
+    document.addEventListener("paste", (e) => {
+      try {
+        // prevent default paste behavior
+        e.preventDefault();
+        
+        // get text from clipboard
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        
+        // if there's no text to paste, exit
+        if (!pastedText) return;
+        
+        // store previous text
+        const previousText = currentText;
+        
+        // add pasted text to current text, respecting the length limit
+        if (currentText.length + pastedText.length <= maxTextLength) {
+          // if there's enough space, add the whole pasted text
+          currentText += pastedText;
+        } else {
+          // if not enough space, add as much as we can
+          const availableSpace = maxTextLength - currentText.length;
+          const textToAdd = pastedText.substring(0, availableSpace);
+          currentText += textToAdd;
+        }
+        
+        // only proceed if text actually changed
+        if (previousText !== currentText) {
+          // update our own text physics and display
+          createTextChain(userId, currentText, mouseX, mouseY);
+          updateTextDisplay(userId, currentText, userColor);
+          
+          // update firebase with new text
+          updateFirebase(true);
+        }
+      } catch (error) {
+        console.error("error handling paste:", error);
+      }
+    });
+  </script>
+</body>
+</html>
