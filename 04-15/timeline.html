@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeline</title>
+    <style>
+        /* @font-face {
+            font-family:'pantasia';
+            src:url(/pantasia.otf);
+        }*/
+        
+        body{
+            font-family:Arial, Helvetica, sans-serif;
+            margin:0;
+            padding:0;
+            overflow:hidden;
+            font-size:10px;
+        }
+
+        .container{
+            display:flex;
+            flex-direction:column;
+            height:100vh;
+            padding:20px;
+            box-sizing:border-box;
+        }
+
+        .input-area{
+            position:absolute;
+            opacity:0;
+            pointer-events:none;
+        }
+
+        .timeline-container{
+            flex-grow:1;
+            position:relative;
+            background-color:white;
+            border:solid 0.5px black;
+            overflow:hidden;
+            cursor:text;
+        }
+
+        .timeline{
+            position:absolute;
+            height:1px;
+            background-color:#ddd;
+            top:50%;
+            width:100%;
+            transform:translateY(-50%);
+        }
+        
+        .time-indicator{
+            position:absolute;
+            height:100%;
+            width:0.5px;
+            background-color:black;
+            top:0;
+            left:80%;
+            z-index:10;
+        }
+
+        .time-label{
+            position:absolute;
+            top:10px;
+            left:calc(80% + 10px);
+            color:#666;
+        }
+
+        .character{
+            position:absolute;
+            font-size:10px;
+            transform:translateY(-50%);
+            transition:left 0.5s linear;
+            animation:appear 0.5s linear;
+        }
+
+        @keyframes appear{
+            0%{
+                filter:blur(2px);
+                opacity:0%;
+            }
+            20%{
+                opacity:100%;
+            }
+            100%{
+                filter:blur(0px);
+            }
+        }
+        
+        .tick{
+            position:absolute;
+            height:10px;
+            width:1px;
+            background-color:#aaa;
+            top:0%;
+            z-index:5;
+        }
+        
+        .tick .major{
+            height:16px;
+            background-color:#888;
+        }
+
+        
+        
+        .debug-panel{
+            position:fixed;
+            bottom:10px;
+            right:10px;
+            background-color:white;
+            color:black;
+            padding:10px;
+            font-family:monospace;
+            font-size:8px;
+            z-index:1000;
+            max-width:300px;
+            max-height:200px;
+            overflow:auto;
+            border:0.5px black solid;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-area">
+            <input type="text" id="typing-input" autocomplete="off">
+        </div>
+        <div class="timeline-container">
+            <div class="timeline"></div>
+            <div class="time-indicator"></div>
+            <div class="time-label" id="current-time"></div>
+        </div>
+    </div>
+    
+    <!--debug pannel-->
+    <div class="debug-panel" id="debug-panel">
+        <div>Firebase Status: <span id="firebase-status">Initializing...</span></div>
+        <div>Active Users: <span id="active-users-count">0</span></div>
+        <div>User ID: <span id="current-user-id">None</span></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain: "chat-f7267.firebaseapp.com",
+            databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId: "chat-f7267",
+            storageBucket: "chat-f7267.firebasestorage.app",
+            messagingSenderId: "393364272511",
+            appId: "1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId: "G-X3PF8YJYT8"
+        };
+
+        // Debug elements
+        const debugPanel = document.getElementById('debug-panel');
+        const firebaseStatus = document.getElementById('firebase-status');
+        const activeUsersCount = document.getElementById('active-users-count');
+        const currentUserIdDisplay = document.getElementById('current-user-id');
+        
+        //initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        //test database connection
+        database.ref('.info/connected').on('value', (snapshot) => {
+            const connected = snapshot.val();
+            console.log("Firebase connection state:", connected ? "connected" : "disconnected");
+            firebaseStatus.textContent = connected ? "Connected" : "Disconnected";
+            firebaseStatus.style.color = connected ? "#8F8" : "#F88";
+        });
+        
+        //start time on page load
+        const startTime = new Date();
+        
+        const input = document.getElementById('typing-input');
+        const timelineContainer = document.querySelector('.timeline-container');
+        const timeLabel = document.getElementById('current-time');
+        
+        //global variables
+        const indicatorPosition = 80; //(% from left)
+        const scrollSpeed = 100; //pixels per second
+        let lastTickTime = 0;
+        let tickCount = 0;
+        let userId = null;
+        let userCharacters = {}; //store characters per user
+        let activeUsers = []; //active users list
+        let timelines = {}; //store timeline elements per user
+        let ticks = []; //store all ticks
+        
+        //generate random user id
+        function generateUserId() {
+            if (localStorage.getItem('timelineUserId')) {
+                const id = localStorage.getItem('timelineUserId');
+                return id;
+            }
+            
+            const id = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('timelineUserId', id);
+            return id;
+        }
+        
+        //initialize user and register with firebase
+        function initializeUser() {
+            userId = generateUserId();
+            currentUserIdDisplay.textContent = userId.substring(0, 6);
+            
+            //register user in firebase
+            const userRef = database.ref('users/' + userId);
+            userRef.set({
+                active: true,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                console.log("user registered");
+            }).catch(error => {
+                console.error("error registering", error);
+            });
+            
+            //remove user when disconnected
+            userRef.onDisconnect().remove();
+            
+            //keep user active status updated
+            setInterval(() => {
+                userRef.update({
+                    lastActive: firebase.database.ServerValue.TIMESTAMP
+                }).catch(error => {
+                    console.error("error updating user activity:", error);
+                });
+            }, 30000); //update every 30 seconds
+            
+            //initialize user's character array
+            userCharacters[userId] = [];
+        }
+        
+        //listen for active users changes
+        function listenForUsers() {
+            console.log("Setting up user listener");
+            database.ref('users').on('value', (snapshot) => {
+                console.log("Users data received:", snapshot.val());
+                const users = snapshot.val() || {};
+                activeUsers = Object.keys(users);
+                activeUsersCount.textContent = activeUsers.length;
+                
+                //update UI for all users
+                updateUserLayout();
+            });
+        }
+        
+        //update the layout based on number of active users
+        function updateUserLayout() {
+            //calculate positions based on user count
+            const userCount = activeUsers.length;
+            timelines = {};
+            
+            if (userCount === 0) {
+                timelines[userId] = {
+                    verticalPosition: 50
+                };
+                return;
+            }
+            
+            //assign positions to users
+            activeUsers.forEach((id, index) => {
+                //calculate vertical position
+                let verticalPosition;
+                
+                if (userCount === 1) {
+                    //single user - center
+                    verticalPosition = 50;
+                } else {
+                    //three or more
+                    const segmentHeight = 100 / userCount;
+                    verticalPosition = (index + 0.5) * segmentHeight;
+                }
+                
+                //store reference
+                timelines[id] = {
+                    verticalPosition: verticalPosition
+                };
+                
+                //reposition existing characters for this user
+                if (userCharacters[id]) {
+                    userCharacters[id].forEach(char => {
+                        char.element.style.top = `${verticalPosition}%`;
+                    });
+                }
+            });
+        }
+        
+        //time label
+        function updateTimeLabel() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: true });
+            timeLabel.textContent = timeString;
+        }
+        
+        //add a tick to the center timeline
+        function addTickToTimeline(timestamp, isMajor = false) {
+            const tickElement = document.createElement('div');
+            tickElement.className = isMajor ? 'tick major' : 'tick';
+            
+            //calculate initial position (at the time indicator)
+            const initialLeft = `${indicatorPosition}%`;
+            
+            //store tick data
+            ticks.push({
+                element: tickElement,
+                timestamp: timestamp,
+                isMajor: isMajor
+            });
+            
+            //set positions
+            tickElement.style.left = initialLeft;
+            tickElement.style.top = `0%`; //always in the center
+            
+            //add to the container
+            timelineContainer.appendChild(tickElement);
+        }
+        
+        //add a character to the timeline
+        function addCharacterToTimeline(char, timestamp, uid, isLocal = true) {
+            const verticalPosition = timelines[uid].verticalPosition;
+            
+            const charElement = document.createElement('div');
+            charElement.className = 'character';
+            charElement.textContent = char;
+            
+            const initialLeft = `${indicatorPosition}%`;
+            
+            //initialize user's character array if needed
+            if (!userCharacters[uid]) {
+                userCharacters[uid] = [];
+            }
+            
+            //store character data
+            userCharacters[uid].push({
+                element: charElement,
+                timestamp: timestamp
+            });
+            
+            //set positions
+            charElement.style.left = initialLeft;
+            charElement.style.top = `${verticalPosition}%`;
+            
+            //add to the container
+            timelineContainer.appendChild(charElement);
+            
+            //if local character, send to Firebase
+            if (isLocal) {
+                database.ref('characters').push({
+                    char: char,
+                    timestamp: timestamp,
+                    userId: uid
+                }).catch(error => {
+                    console.error("Error storing character in Firebase:", error);
+                });
+            }
+        }
+        
+        //listen for new characters from all users
+        function listenForCharacters() {
+            console.log("Setting up character listener");
+            //listen for recent characters (last 10 seconds)
+            database.ref('characters')
+                .orderByChild('timestamp')
+                .startAfter(Date.now() - 10000)
+                .on('child_added', (snapshot) => {
+                    const charData = snapshot.val();
+                    console.log("New character received:", charData);
+                    
+                    //avoid duplicating local characters
+                    if (charData && charData.userId && charData.userId !== userId) {
+                        addCharacterToTimeline(
+                            charData.char, 
+                            charData.timestamp, 
+                            charData.userId, 
+                            false //not a local character
+                        );
+                    }
+                }, (error) => {
+                    console.error("Error listening for characters:", error);
+                });
+        }
+        
+        //handle input
+        input.addEventListener('input', (e) => {
+            //last character typed
+            const lastChar = e.target.value.slice(-1);
+            if (lastChar) {
+                const now = new Date().getTime();
+                addCharacterToTimeline(lastChar, now, userId, true);
+            }
+            
+            // Clear the input after processing
+            e.target.value = '';
+        });
+        
+        //generate ticks
+        function generateTicks() {
+            //only generate ticks if there are active users
+            if (Object.keys(timelines).length === 0) return;
+            
+            const now = new Date();
+            const currentTime = now.getTime();
+            
+            //add ticks every 100ms
+            if (currentTime - lastTickTime >= 100) {
+                const isMajor = tickCount % 10 === 0; //make every 10th tick (1 second) major
+                addTickToTimeline(now, isMajor);
+                lastTickTime = currentTime;
+                tickCount++;
+            }
+        }
+        
+        //update character and tick positions
+        function updatePositions() {
+            const now = new Date();
+            
+            //update all users' characters
+            for (const uid in userCharacters) {
+                const characters = userCharacters[uid];
+                
+                //use for loop with index to safely remove items
+                for (let i = characters.length - 1; i >= 0; i--) {
+                    const char = characters[i];
+                    
+                    //calculate time difference in milliseconds
+                    const timeDiff = now - char.timestamp;
+                    
+                    //new position based on time difference
+                    const pixelsToMove = (timeDiff / 1000) * scrollSpeed;
+                    
+                    //convert to percentage of container width
+                    const containerWidth = timelineContainer.offsetWidth;
+                    const percentToMove = (pixelsToMove / containerWidth) * 100;
+                    
+                    //new position
+                    const newPosition = indicatorPosition - percentToMove;
+                    
+                    //update position
+                    char.element.style.left = `${newPosition}%`;
+                    
+                    //remove characters off screen
+                    if (newPosition < -5) {
+                        if (char.element.parentNode) {
+                            char.element.parentNode.removeChild(char.element);
+                        }
+                        characters.splice(i, 1);
+                    }
+                }
+            }
+            
+            //update ticks
+            for (let i = ticks.length - 1; i >= 0; i--) {
+                const tick = ticks[i];
+                const timeDiff = now - tick.timestamp;
+                
+                //new position based on time difference
+                const pixelsToMove = (timeDiff / 1000) * scrollSpeed;
+                
+                //convert to percentage of container width
+                const containerWidth = timelineContainer.offsetWidth;
+                const percentToMove = (pixelsToMove / containerWidth) * 100;
+                
+                //new position
+                const newPosition = indicatorPosition - percentToMove;
+                
+                //update position
+                tick.element.style.left = `${newPosition}%`;
+                
+                //remove ticks off screen
+                if (newPosition < -5) {
+                    if (tick.element.parentNode) {
+                        tick.element.parentNode.removeChild(tick.element);
+                    }
+                    ticks.splice(i, 1);
+                }
+            }
+        }
+        
+        //focus input when timeline is clicked
+        timelineContainer.addEventListener('click', () => {
+            input.focus();
+        });
+        
+        //loop animation
+        function animate() {
+            updateTimeLabel();
+            generateTicks();
+            updatePositions();
+            requestAnimationFrame(animate);
+        }
+        
+        // Test function to manually verify Firebase connectivity
+        function testFirebaseConnection() {
+            const testRef = database.ref('test');
+            const testData = {
+                timestamp: Date.now(),
+                message: "Test connection"
+            };
+            
+            testRef.set(testData)
+                .then(() => {
+                    console.log("Firebase write test successful");
+                    return testRef.once('value');
+                })
+                .then((snapshot) => {
+                    console.log("Firebase read test successful:", snapshot.val());
+                    alert("Firebase connection test successful!");
+                })
+                .catch((error) => {
+                    console.error("Firebase test failed:", error);
+                    alert("Firebase connection test failed: " + error.message);
+                });
+        }
+        
+        //auto-focus the input field
+        window.addEventListener('load', () => {
+            initializeUser();
+            listenForUsers();
+            listenForCharacters();
+            input.focus();
+            animate();
+        });
+        
+        //input stays focused
+        document.addEventListener('click', () => {
+            input.focus();
+        });
+
+        //prevent backspace
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Backspace') {
+                event.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
