@@ -3,7 +3,31 @@
 <head>
     <style>
         body{
-            font-family:'Times New Roman', Times, serif;
+            font-family:Arial, Helvetica, sans-serif;
+            position:relative;
+            cursor:none;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            font-size:12px;
+        }
+
+        ::selection{
+            background-color:rgb(214, 214, 214);
+            color:black;
+        }
+
+        .container{
+            width:80%;
+            max-width:1000px;
+            height:50%;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-direction:column;
+            border:1px solid grey;
+            box-shadow:0 0 10px rgb(227, 227, 227);
         }
 
         .week-wrapper{
@@ -15,33 +39,214 @@
             align-items:center;
         }
 
+        h1,
+        h2,
+        p{
+            font-size:12px;
+            font-weight:normal;
+            color:grey;
+        }
+        
         a{
             transform:skewY(0);
+            color:black;
+            transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+            cursor:none;
         }
-
+        
         a:hover{
             font-style:italic;
             letter-spacing:5px;
             transform:skewY(-12deg);
-            transition:all 0.5s cubic-bezier(0.1, 0, 0.1, 1);
+            background-color:white;
+            border:0.5px black dashed;
+            color:black;
+            cursor:none;
+        }
+        
+        .user-cursor{
+            position:absolute;
+            width:5px;
+            height:5px;
+            background-color:black;
+            transform-origin:center;
+            pointer-events:none;
+            margin-left:-10px;
+            margin-top:-10px;
+            z-index:1000;
+            border:0.5px white solid;
+            transition:width 0.3s cubic-bezier(0.1, 0, 0.1, 1), height 0.3s cubic-bezier(0.1, 0, 0.1, 1), margin 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+        }
+
+        .user-cursor.select{
+            width:10px;
+            height:10px;
+            border-radius:100%;
         }
     </style>
 </head>
 <body>
-    <div class="week-wrapper">
-        <p>March 4</p>
-        <a href="03-04/speech-text.html">Speech to Text</a>
-        <p>March 31</p>
-        <a href="03-31/text-activate.html">Text "Activation"</a>
-        <a href="03-31/chat.html">Live Typing</a>
-        <p>April 8</p>
-        <a href="04-08/cursor.html">Live Cursor</a>
-        <p>April 15</p>
-        <a href="04-15/timeline.html">Timeline</a>
+    <svg id="cursor-connections" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:500;"></svg>
+    <div class="container">
+        <div class="week-wrapper">
+            <h1>Nothing in Between</h1>
+            <div id="currentTime"></div>
+            <div>active users: <span id="activeUsers">0</span></div>
+            <p>March 4</p>
+            <a href="03-04/speech-text.html">Speech to Text</a>
+            <p>March 31</p>
+            <!-- <a href="03-31/text-activate.html">Text "Activation"</a> -->
+            <a href="03-31/chat.html">Masked Typing</a>
+            <p>April 8</p>
+            <a href="04-08/cursor.html">Live Cursor</a>
+            <p>April 15</p>
+            <a href="04-15/timeline.html">Timeline</a>
+        </div>
     </div>
-
-    <script>
+    <script type="module">
+        //import
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         
+        //firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain: "chat-f7267.firebaseapp.com",
+            databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId: "chat-f7267",
+            storageBucket: "chat-f7267.firebasestorage.app",
+            messagingSenderId: "393364272511",
+            appId: "1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId: "G-X3PF8YJYT8"
+        };
+        
+        //initialize
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        //setup
+        const BASE_PATH = 'homepage';
+        
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        const username = userId.slice(-4);
+        
+        const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
+        const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
+        const connectedRef = ref(db, '.info/connected');
+        
+        //default hover state
+        let isHoveringLink = false;
+        
+        //update position
+        function updateCursorPosition(event) {
+            set(userCursorRef, {
+                x: event.clientX,
+                y: event.clientY,
+                username: username,
+                timestamp: Date.now(),
+                isHovering: isHoveringLink
+            });
+        }
+        
+        //default data
+        function setInitialCursor() {
+            set(userCursorRef, {
+                x: 0,
+                y: 0,
+                username: username,
+                timestamp: Date.now(),
+                isHovering: false
+            });
+        }
+        
+        //track movement
+        onValue(connectedRef, (snapshot) => {
+            if (snapshot.val() === true) {
+                onDisconnect(userCursorRef).remove();
+                setInitialCursor();
+                document.addEventListener('mousemove', updateCursorPosition);
+            }
+        });
+        
+        const cursorElements = {};
+        
+        onValue(cursorsRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            
+            //remove cursors that no longer exist in the database
+            Object.keys(cursorElements).forEach(key => {
+                if (!data[key]) {
+                    cursorElements[key].remove();
+                    delete cursorElements[key];
+                }
+            });
+            
+            //update or create cursors
+            Object.entries(data).forEach(([key, value]) => {
+                let cursor = cursorElements[key];
+                
+                //create new cursor if it doesn't exist
+                if (!cursor) {
+                    cursor = document.createElement('div');
+                    cursor.className = 'user-cursor';
+                    document.body.appendChild(cursor);
+                    cursorElements[key] = cursor;
+                }
+                
+                //update cursor position
+                if (value.x !== undefined && value.y !== undefined) {
+                    cursor.style.left = `${value.x}px`;
+                    cursor.style.top = `${value.y}px`;
+                }
+                
+                cursor.dataset.timestamp = value.timestamp;
+                
+                //update hover state
+                if (value.isHovering) {
+                    cursor.classList.add('select');
+                } else {
+                    cursor.classList.remove('select');
+                }
+            });
+
+            document.getElementById('activeUsers').textContent = Object.keys(cursorElements).length; //display active users
+        });
+
+        //hover effect
+        const links = document.querySelectorAll('a');
+        
+        links.forEach(link => {
+            link.addEventListener('mouseenter', () => {
+                isHoveringLink = true;
+            });
+            
+            link.addEventListener('mouseleave', () => {
+                isHoveringLink = false;
+            });
+        });
+
+        //remove idle cursors
+        function removeIdleCursors() {
+            const now = Date.now();
+            Object.entries(cursorElements).forEach(([key, element]) => {
+                const timestamp = parseInt(element.dataset.timestamp, 10);
+                if (!timestamp || now - timestamp > 30000) { // 30 seconds
+                    element.remove();
+                    delete cursorElements[key];
+                    remove(ref(db, `${BASE_PATH}/cursors/${key}`));
+                }
+            });
+        }
+
+        setInterval(removeIdleCursors, 10000); // Run cleanup every 10 seconds
+
+        //current time
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
     </script>
 </body>
 </html>

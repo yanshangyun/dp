@@ -1,0 +1,16 @@
+#backButton{
+    position:fixed;
+    top:5px;
+    left:5px;
+    color:black;
+    transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+}
+
+#backButton:hover{
+    font-style:italic;
+    letter-spacing:5px;
+    background-color:white;
+    border:0.5px black dashed;
+    color:black;
+    padding:0 5px;
+}

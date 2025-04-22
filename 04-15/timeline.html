@@ -21,7 +21,7 @@
         .container{
             display:flex;
             flex-direction:column;
-            height:100vh;
+            height:80vh;
             padding:20px;
             box-sizing:border-box;
         }
@@ -101,8 +101,6 @@
             height:16px;
             background-color:#888;
         }
-
-        
         
         .debug-panel{
             position:fixed;
@@ -135,16 +133,15 @@
     
     <!--debug pannel-->
     <div class="debug-panel" id="debug-panel">
-        <div>Firebase Status: <span id="firebase-status">Initializing...</span></div>
         <div>Active Users: <span id="active-users-count">0</span></div>
-        <div>User ID: <span id="current-user-id">None</span></div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script type="module">
+        //import
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, update, onDisconnect, onChildAdded, serverTimestamp, query, orderByChild, startAfter, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    <script>
-        // Firebase configuration
+        //firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
             authDomain: "chat-f7267.firebaseapp.com",
@@ -156,23 +153,13 @@
             measurementId: "G-X3PF8YJYT8"
         };
 
-        // Debug elements
+        //initialize
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        //debug elements
         const debugPanel = document.getElementById('debug-panel');
-        const firebaseStatus = document.getElementById('firebase-status');
         const activeUsersCount = document.getElementById('active-users-count');
-        const currentUserIdDisplay = document.getElementById('current-user-id');
-        
-        //initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        
-        //test database connection
-        database.ref('.info/connected').on('value', (snapshot) => {
-            const connected = snapshot.val();
-            console.log("Firebase connection state:", connected ? "connected" : "disconnected");
-            firebaseStatus.textContent = connected ? "Connected" : "Disconnected";
-            firebaseStatus.style.color = connected ? "#8F8" : "#F88";
-        });
         
         //start time on page load
         const startTime = new Date();
@@ -181,8 +168,10 @@
         const timelineContainer = document.querySelector('.timeline-container');
         const timeLabel = document.getElementById('current-time');
         
-        //global variables
-        const indicatorPosition = 80; //(% from left)
+        //setup
+        const BASE_PATH = 'timeline';
+
+        const indicatorPosition = 80; //% from left
         const scrollSpeed = 100; //pixels per second
         let lastTickTime = 0;
         let tickCount = 0;
@@ -207,30 +196,13 @@
         //initialize user and register with firebase
         function initializeUser() {
             userId = generateUserId();
-            currentUserIdDisplay.textContent = userId.substring(0, 6);
             
             //register user in firebase
-            const userRef = database.ref('users/' + userId);
-            userRef.set({
-                active: true,
-                lastActive: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                console.log("user registered");
-            }).catch(error => {
-                console.error("error registering", error);
-            });
+            const userRef = ref(db, `${BASE_PATH}/users/${userId}`);
+            set(userRef, { connected: true });
             
             //remove user when disconnected
-            userRef.onDisconnect().remove();
-            
-            //keep user active status updated
-            setInterval(() => {
-                userRef.update({
-                    lastActive: firebase.database.ServerValue.TIMESTAMP
-                }).catch(error => {
-                    console.error("error updating user activity:", error);
-                });
-            }, 30000); //update every 30 seconds
+            onDisconnect(userRef).remove();
             
             //initialize user's character array
             userCharacters[userId] = [];
@@ -238,19 +210,18 @@
         
         //listen for active users changes
         function listenForUsers() {
-            console.log("Setting up user listener");
-            database.ref('users').on('value', (snapshot) => {
-                console.log("Users data received:", snapshot.val());
+            const usersRef = ref(db, `${BASE_PATH}/users`);
+            onValue(usersRef, (snapshot) => {
                 const users = snapshot.val() || {};
                 activeUsers = Object.keys(users);
                 activeUsersCount.textContent = activeUsers.length;
                 
-                //update UI for all users
+                //update ui for all users
                 updateUserLayout();
             });
         }
         
-        //update the layout based on number of active users
+        //update the layout based on active users
         function updateUserLayout() {
             //calculate positions based on user count
             const userCount = activeUsers.length;
@@ -266,16 +237,8 @@
             //assign positions to users
             activeUsers.forEach((id, index) => {
                 //calculate vertical position
-                let verticalPosition;
-                
-                if (userCount === 1) {
-                    //single user - center
-                    verticalPosition = 50;
-                } else {
-                    //three or more
-                    const segmentHeight = 100 / userCount;
-                    verticalPosition = (index + 0.5) * segmentHeight;
-                }
+                const segmentHeight = 100 / userCount;
+                let verticalPosition = (index + 0.5) * segmentHeight;
                 
                 //store reference
                 timelines[id] = {
@@ -315,14 +278,13 @@
             
             //set positions
             tickElement.style.left = initialLeft;
-            tickElement.style.top = `0%`; //always in the center
             
             //add to the container
             timelineContainer.appendChild(tickElement);
         }
         
         //add a character to the timeline
-        function addCharacterToTimeline(char, timestamp, uid, isLocal = true) {
+        function addCharacterToTimeline(char, timestamp, uid, isLocal = true, firebaseKey = null) {
             const verticalPosition = timelines[uid].verticalPosition;
             
             const charElement = document.createElement('div');
@@ -339,7 +301,8 @@
             //store character data
             userCharacters[uid].push({
                 element: charElement,
-                timestamp: timestamp
+                timestamp: timestamp,
+                firebaseKey: firebaseKey // Store the key for later deletion
             });
             
             //set positions
@@ -349,41 +312,45 @@
             //add to the container
             timelineContainer.appendChild(charElement);
             
-            //if local character, send to Firebase
+            //if local character, send to firebase
             if (isLocal) {
-                database.ref('characters').push({
+                const charactersRef = ref(db, `${BASE_PATH}/characters`);
+                const newCharRef = push(charactersRef, {
                     char: char,
                     timestamp: timestamp,
                     userId: uid
-                }).catch(error => {
-                    console.error("Error storing character in Firebase:", error);
                 });
+                
+                // Store the generated key
+                const index = userCharacters[uid].length - 1;
+                userCharacters[uid][index].firebaseKey = newCharRef.key;
             }
         }
         
         //listen for new characters from all users
         function listenForCharacters() {
-            console.log("Setting up character listener");
-            //listen for recent characters (last 10 seconds)
-            database.ref('characters')
-                .orderByChild('timestamp')
-                .startAfter(Date.now() - 10000)
-                .on('child_added', (snapshot) => {
-                    const charData = snapshot.val();
-                    console.log("New character received:", charData);
-                    
-                    //avoid duplicating local characters
-                    if (charData && charData.userId && charData.userId !== userId) {
-                        addCharacterToTimeline(
-                            charData.char, 
-                            charData.timestamp, 
-                            charData.userId, 
-                            false //not a local character
-                        );
-                    }
-                }, (error) => {
-                    console.error("Error listening for characters:", error);
-                });
+            //listen for recent characters
+            const charactersRef = ref(db, `${BASE_PATH}/characters`);
+            const recentCharactersQuery = query(
+                charactersRef,
+                orderByChild('timestamp'),
+                startAfter(Date.now() - 10000)
+            );
+            
+            onChildAdded(recentCharactersQuery, (snapshot) => {
+                const charData = snapshot.val();
+                
+                //avoid duplicating local characters
+                if (charData && charData.userId && charData.userId !== userId) {
+                    addCharacterToTimeline(
+                        charData.char, 
+                        charData.timestamp, 
+                        charData.userId, 
+                        false, //not a local character
+                        snapshot.key // Store the Firebase key
+                    );
+                }
+            });
         }
         
         //handle input
@@ -395,10 +362,16 @@
                 addCharacterToTimeline(lastChar, now, userId, true);
             }
             
-            // Clear the input after processing
+            //clear the input after processing
             e.target.value = '';
         });
         
+        // Helper to calculate percent to move based on time difference
+        function calculatePercentToMove(timeDiffMs) {
+            const pixelsToMove = (timeDiffMs / 1000) * scrollSpeed;
+            return (pixelsToMove / timelineContainer.offsetWidth) * 100;
+        }
+
         //generate ticks
         function generateTicks() {
             //only generate ticks if there are active users
@@ -432,11 +405,7 @@
                     const timeDiff = now - char.timestamp;
                     
                     //new position based on time difference
-                    const pixelsToMove = (timeDiff / 1000) * scrollSpeed;
-                    
-                    //convert to percentage of container width
-                    const containerWidth = timelineContainer.offsetWidth;
-                    const percentToMove = (pixelsToMove / containerWidth) * 100;
+                    const percentToMove = calculatePercentToMove(timeDiff);
                     
                     //new position
                     const newPosition = indicatorPosition - percentToMove;
@@ -449,6 +418,16 @@
                         if (char.element.parentNode) {
                             char.element.parentNode.removeChild(char.element);
                         }
+                        
+                        // Delete from Firebase if we have a key
+                        if (char.firebaseKey) {
+                            const charRef = ref(db, `${BASE_PATH}/characters/${char.firebaseKey}`);
+                            remove(charRef).catch(error => {
+                                console.error("Error removing character from Firebase:", error);
+                            });
+                        }
+                        
+                        // Remove from local array
                         characters.splice(i, 1);
                     }
                 }
@@ -460,11 +439,7 @@
                 const timeDiff = now - tick.timestamp;
                 
                 //new position based on time difference
-                const pixelsToMove = (timeDiff / 1000) * scrollSpeed;
-                
-                //convert to percentage of container width
-                const containerWidth = timelineContainer.offsetWidth;
-                const percentToMove = (pixelsToMove / containerWidth) * 100;
+                const percentToMove = calculatePercentToMove(timeDiff);
                 
                 //new position
                 const newPosition = indicatorPosition - percentToMove;
@@ -493,29 +468,6 @@
             generateTicks();
             updatePositions();
             requestAnimationFrame(animate);
-        }
-        
-        // Test function to manually verify Firebase connectivity
-        function testFirebaseConnection() {
-            const testRef = database.ref('test');
-            const testData = {
-                timestamp: Date.now(),
-                message: "Test connection"
-            };
-            
-            testRef.set(testData)
-                .then(() => {
-                    console.log("Firebase write test successful");
-                    return testRef.once('value');
-                })
-                .then((snapshot) => {
-                    console.log("Firebase read test successful:", snapshot.val());
-                    alert("Firebase connection test successful!");
-                })
-                .catch((error) => {
-                    console.error("Firebase test failed:", error);
-                    alert("Firebase connection test failed: " + error.message);
-                });
         }
         
         //auto-focus the input field
