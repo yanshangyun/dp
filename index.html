@@ -19,9 +19,9 @@
         }
 
         .container{
-            width:80%;
+            width:50%;
             max-width:1000px;
-            height:50%;
+            height:60%;
             display:flex;
             justify-content:center;
             align-items:center;
@@ -81,6 +81,8 @@
         .user-cursor.select{
             width:10px;
             height:10px;
+            border:0.5px black solid;
+            background-color:white;
             border-radius:100%;
         }
     </style>
@@ -91,9 +93,10 @@
         <div class="week-wrapper">
             <h1>Nothing in Between</h1>
             <div id="currentTime"></div>
-            <div>active users: <span id="activeUsers">0</span></div>
-            <p>March 4</p>
-            <a href="03-04/speech-text.html">Speech to Text</a>
+            <div>(<span id="activeUsers">0</span>)</div>
+            <div style="height:20px"></div>
+            <!-- <p>March 4</p>
+            <a href="03-04/speech-text.html">Speech to Text</a> -->
             <p>March 31</p>
             <!-- <a href="03-31/text-activate.html">Text "Activation"</a> -->
             <a href="03-31/chat.html">Masked Typing</a>
@@ -101,6 +104,10 @@
             <a href="04-08/cursor.html">Live Cursor</a>
             <p>April 15</p>
             <a href="04-15/timeline.html">Timeline</a>
+            <p>April 24</p>
+            <a href="04-24/unicode.html">Unicode Library</a>
+            <p>April 27</p>
+            <a href="04-27/paths.html">Keyboard Paths</a>
         </div>
     </div>
     <script type="module">
@@ -230,7 +237,7 @@
             const now = Date.now();
             Object.entries(cursorElements).forEach(([key, element]) => {
                 const timestamp = parseInt(element.dataset.timestamp, 10);
-                if (!timestamp || now - timestamp > 30000) { // 30 seconds
+                if (!timestamp || now - timestamp > 30000) { //30 seconds
                     element.remove();
                     delete cursorElements[key];
                     remove(ref(db, `${BASE_PATH}/cursors/${key}`));

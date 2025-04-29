@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>keyboard paths</title>
+    <style>
+        body{
+            margin:0;
+            padding:0;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            min-height:100vh;
+            font-family:Arial, sans-serif;
+            background-color:white;
+        }
+
+        #inputField{
+            position: absolute;
+            left: -9999px;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            pointer-events: none;
+        }
+
+        .canvas-container{
+            position:relative;
+            width:600px;
+            height:400px;
+            margin:0;
+        }
+
+        canvas{
+            position:absolute;
+            top:0;
+            left:0;
+        }
+
+        #status{
+            position:fixed;
+            top:10px;
+            padding:10px;
+            margin:10px 0;
+            background-color:#eee;
+            width:auto;
+            text-align:center;
+            font-size:12px;
+            height:12px;
+            border-radius:20px;
+        }
+
+        .controls{
+            display:flex;
+            gap:10px;
+            margin-top:10px;
+        }
+
+        button{
+            padding:2px 16px;
+            border:1px solid rgba(0, 0, 0, 0.25);
+            background-color:white;
+            color:rgba(0, 0, 0, 0.25);
+            cursor:pointer;
+            height:auto;
+            font-size:12px;
+            border-radius:15px;
+        }
+
+        button:hover{
+            background-color:black;
+            color:white;
+        }
+
+        #infoText{
+            position:absolute;
+            pointer-events:none;
+            color:black;
+            font-size:12px;
+            transform:translate(15px, 15px);
+            z-index:1000;
+            display:none;
+            padding:4px 8px;
+            border-radius:15px;
+            background-color:white;
+            box-shadow:0 2px 4px rgba(0,0,0,0.1);
+            opacity:100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="status"></div>
+    <input type="text" id="inputField" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="infoText"></div>
+    <div class="controls">
+        <button id="clearButton">clear</button>
+        <button id="downloadButton">download</button>
+    </div>
+
+    <script>
+        // DOM elements
+        const canvasContainer = document.querySelector('.canvas-container');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const inputField = document.getElementById('inputField');
+        const status = document.getElementById('status');
+        const clearButton = document.getElementById('clearButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const infoText = document.getElementById('infoText');
+        
+        // Set canvas to high resolution(2x)
+        const dpr = window.devicePixelRatio || 2;
+        const rect = canvasContainer.getBoundingClientRect();
+        
+        // Set display size
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        
+        // Set actual size in memory(scaled up)
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        
+        // Scale context to match
+        ctx.scale(dpr, dpr);
+        
+        // QWERTY keyboard layout with positions
+        const keyPositions ={
+            'q':{ x:60, y:100 }, 'w':{ x:110, y:100 }, 'e':{ x:160, y:100 }, 'r':{ x:210, y:100 }, 't':{ x:260, y:100 }, 'y':{ x:310, y:100 }, 'u':{ x:360, y:100 }, 'i':{ x:410, y:100 }, 'o':{ x:460, y:100 }, 'p':{ x:510, y:100 },
+            'a':{ x:80, y:170 }, 's':{ x:130, y:170 }, 'd':{ x:180, y:170 }, 'f':{ x:230, y:170 }, 'g':{ x:280, y:170 }, 'h':{ x:330, y:170 }, 'j':{ x:380, y:170 }, 'k':{ x:430, y:170 }, 'l':{ x:480, y:170 },
+            'z':{ x:100, y:240 }, 'x':{ x:150, y:240 }, 'c':{ x:200, y:240 }, 'v':{ x:250, y:240 }, 'b':{ x:300, y:240 }, 'n':{ x:350, y:240 }, 'm':{ x:400, y:240 }
+        };
+        
+        // Track all word paths
+        let words = [];
+        let currentWord = [];
+        let keyPressCounts ={}; // Track total presses for each key
+        let hoveredWord = null; // Track currently hovered word
+        
+        // Animation variables
+        let isAnimating = false;
+        let animationFrameId = null;
+        let animationProgress = 0;
+        let animateWord = null;
+        const ANIMATION_SPEED = 0.5; // Animation speed(0-1)
+        
+        // Easing function for smooth animation
+        function easeInOutCubic(t){
+            // Custom easing:faster initial movement, slower ease-out
+            if(t < 0.5){
+                return 2 * t * t; // Quadratic ease-in
+            }else{
+                return 1 - Math.pow(-2 * t + 2, 2) / 2; // Quadratic ease-out
+            }
+        }
+
+        // Get color based on word length
+        function getWordColor(length){
+            // Create a smooth gradient between colors based on word length
+            // Define base colors for our gradient
+            const colors = [
+                {r: 76, g: 175, b: 80, a: 0.3},   // Green (length 1)
+                {r: 0, g: 188, b: 212, a: 0.3},    // Cyan (length 3)
+                {r: 33, g: 150, b: 243, a: 0.3},   // Light Blue (length 5)
+                {r: 63, g: 81, b: 181, a: 0.3},    // Indigo (length 8)
+                {r: 103, g: 58, b: 183, a: 0.3}    // Purple (length 10+)
+            ];
+            
+            // Maximum length where color stops changing
+            const maxLength = 10;
+            
+            //map length to a 0-1 scale
+            const normalizedLength = Math.min(length, maxLength) / maxLength;
+            
+            // Calculate which segment of the gradient we're in
+            const segments = colors.length - 1;
+            const segment = Math.min(Math.floor(normalizedLength * segments), segments - 1);
+            const segmentProgress = (normalizedLength * segments) - segment;
+            
+            // Get the two colors to interpolate between
+            const color1 = colors[segment];
+            const color2 = colors[segment + 1];
+            
+            //color interpolation
+            const r = Math.round(color1.r + (color2.r - color1.r) * segmentProgress);
+            const g = Math.round(color1.g + (color2.g - color1.g) * segmentProgress);
+            const b = Math.round(color1.b + (color2.b - color1.b) * segmentProgress);
+            const a = color1.a + (color2.a - color1.a) * segmentProgress;
+            
+            //return interpolated color
+            return `rgba(${r}, ${g}, ${b}, ${a})`;
+        }
+
+        // Calculate circle size based on total key presses
+        function getCircleSize(pressCount){
+            return 1 +(pressCount * 0.25); // Base size of 3, increases by 0.5 for each press
+        }
+        
+        // Helper function to draw a line between points with animation support
+        function drawLine(points, color, lineWidth = 2, progress = 1, opacity = 1){
+            if(points.length < 2) return;
+            
+            // Calculate the total number of segments to animate
+            const totalSegments = points.length - 1;
+            
+            // Calculate which segment we're currently drawing and how far along we are
+            const currentSegment = Math.min(Math.floor(progress * totalSegments), totalSegments - 1);
+            const segmentProgress =(progress * totalSegments) - currentSegment;
+            
+            // Draw completed segments
+            for(let i = 0; i < currentSegment; i++){
+                drawLineSegment(points[i], points[i + 1], color, lineWidth, i / totalSegments, (i + 1) / totalSegments, opacity);
+            }
+            
+            // Draw current segment in progress
+            if(segmentProgress > 0 && currentSegment < totalSegments){
+                const startPoint = points[currentSegment];
+                const endPoint = points[currentSegment + 1];
+                
+                // Create an intermediate point based on progress
+                const intermediatePoint ={
+                    x:startPoint.x +(endPoint.x - startPoint.x) * segmentProgress,
+                    y:startPoint.y +(endPoint.y - startPoint.y) * segmentProgress
+                };
+                
+                drawLineSegment(startPoint, intermediatePoint, color, lineWidth, 
+                    currentSegment / totalSegments, 
+                    (currentSegment + segmentProgress) / totalSegments,
+                    opacity);
+            }
+        }
+        
+        // Helper function to draw a single segment of a line with a Bezier curve
+        function drawLineSegment(p1, p2, color, lineWidth, startProgress = 0, endProgress = 1, opacity = 1){
+            // Create gradient
+            const gradient = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+            
+            // Parse the final color
+            const colorMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (colorMatch) {
+                const r = parseInt(colorMatch[1]);
+                const g = parseInt(colorMatch[2]);
+                const b = parseInt(colorMatch[3]);
+                const a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1;
+                
+                // Add color stops for the gradient
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${a * opacity})`);
+            } else {
+                // Fallback if color parsing fails
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity})`);
+                gradient.addColorStop(1, color);
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            
+            // Calculate the angle between points
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const distance = Math.sqrt(
+                Math.pow(p2.x - p1.x, 2) + 
+                Math.pow(p2.y - p1.y, 2)
+            );
+            
+            // Calculate control points for the Bezier curve
+            const offset = Math.min(distance * 0.3, 20);
+            
+            const cp1x = p1.x +(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+            const cp1y = p1.y +(distance / 3) * Math.sin(angle) + offset * Math.sin(angle - Math.PI/2);
+            
+            const cp2x = p2.x -(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+            const cp2y = p2.y -(distance / 3) * Math.sin(angle) + offset * Math.sin(angle - Math.PI/2);
+            
+            // Draw the Bezier curve
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        // Helper function to draw a dot at a point
+        function drawDot(point, color, showLetter = false, animated = false, animProgress = 1){
+            const circleSize = getCircleSize(keyPressCounts[point.key] || 0);
+            
+            // For animated dots, scale size with progress
+            const size = animated ? circleSize * animProgress : circleSize;
+            
+            // Create radial gradient
+            const gradient = ctx.createRadialGradient(
+                point.x, point.y, 0,  // Inner circle (center)
+                point.x, point.y, size  // Outer circle
+            );
+            
+            // Parse the color to get RGB values
+            const colorMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (colorMatch) {
+                const r = parseInt(colorMatch[1]);
+                const g = parseInt(colorMatch[2]);
+                const b = parseInt(colorMatch[3]);
+                const a = colorMatch[4] ? parseFloat(colorMatch[4]) : 1;
+                
+                // Add color stops for the gradient
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${a})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            } else {
+                // Fallback if color parsing fails
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+            
+            // Draw the circle with gradient
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            if(showLetter &&(!animated || animProgress > 0.7)){
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(point.key, point.x, point.y -(size + 5));
+                ctx.globalCompositeOperation = 'multiply';
+            }
+        }
+
+        // Helper function to update canvas size
+        function updateCanvasSize(){
+            const rect = canvasContainer.getBoundingClientRect();
+            
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            ctx.scale(dpr, dpr);
+        }
+
+        // Start animation for a word
+        function startAnimation(word){
+            if(isAnimating){
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            isAnimating = true;
+            animationProgress = 0;
+            animateWord = word;
+            
+            animateStep();
+        }
+        
+        // Animation step
+        function animateStep(){
+            // Update animation progress
+            animationProgress += ANIMATION_SPEED;
+            
+            if(animationProgress >= 1){
+                animationProgress = 1;
+                isAnimating = false;
+            }
+            
+            // Redraw
+            drawPaths();
+            
+            // Continue animation if not complete
+            if(isAnimating){
+                animationFrameId = requestAnimationFrame(animateStep);
+            }
+        }
+
+        // Draw all word paths
+        function drawPaths(liveStart = null, liveEnd = null, liveProgress = 1){
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            
+            // Set blend mode for overlapping lines
+            ctx.globalCompositeOperation = 'multiply';
+            
+            // Draw all saved word paths
+            words.forEach((word, wordIndex) =>{
+                const color = getWordColor(word.points.length);
+                
+                // If a word is being hovered, lower opacity for non-hovered words
+                const opacity = hoveredWord !== null && hoveredWord !== wordIndex ? 0.3 : 1;
+                
+                // Check if this is the currently animating word
+                if(isAnimating && animateWord === wordIndex){
+                    drawLine(word.points, color, wordIndex === hoveredWord ? 4 :2, easeInOutCubic(animationProgress), opacity);
+                    
+                    // Draw completed dots
+                    const dotsToShow = Math.ceil(easeInOutCubic(animationProgress) * word.points.length);
+                    
+                    for(let i = 0; i < dotsToShow; i++){
+                        // For the last visible dot, animate its appearance
+                        const isLastDot = i === dotsToShow - 1 && animationProgress < 1;
+                        const dotProgress = isLastDot ? 
+                           (easeInOutCubic(animationProgress) * word.points.length) % 1 :1;
+                            
+                        drawDot(
+                            word.points[i], 
+                            color, 
+                            wordIndex === hoveredWord,
+                            isLastDot,
+                            dotProgress
+                        );
+                    }
+                }else{
+                    // Draw completed words normally
+                    drawLine(word.points, color, wordIndex === hoveredWord ? 4 :2, 1, opacity);
+                    
+                    // Draw the end dot
+                    if(word.points.length > 0){
+                        drawDot(
+                            word.points[word.points.length - 1], 
+                            color, 
+                            false // Don't show letter here
+                        );
+                    }
+                    
+                    // If this word is being hovered, show all letters
+                    if(wordIndex === hoveredWord){
+                        word.points.forEach((point, index) =>{
+                            ctx.globalCompositeOperation = 'source-over';
+                            ctx.fillStyle = '#000';
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(point.key, point.x, point.y -(getCircleSize(keyPressCounts[point.key] || 0) + 5));
+                            ctx.globalCompositeOperation = 'multiply';
+                        });
+                    }
+                }
+            });
+            
+            // Draw current word with live typing animation if applicable
+            if(currentWord.length > 0){
+                const color = getWordColor(currentWord.length);
+                
+                // Draw all complete segments of the current word
+                if(liveStart && liveEnd && liveProgress < 1){
+                    // Draw all segments except the last one that's being animated
+                    const points = currentWord.slice(0, -1);
+                    if(points.length > 1){
+                        drawLine(points, color);
+                    }
+                    
+                    // Draw the animated segment
+                    ctx.beginPath();
+                    ctx.moveTo(liveStart.x, liveStart.y);
+                    
+                    // Calculate the angle and distance
+                    const angle = Math.atan2(liveEnd.y - liveStart.y, liveEnd.x - liveStart.x);
+                    const distance = Math.sqrt(
+                        Math.pow(liveEnd.x - liveStart.x, 2) + 
+                        Math.pow(liveEnd.y - liveStart.y, 2)
+                    );
+                    
+                    // Calculate control points for the Bezier curve
+                    const offset = Math.min(distance * 0.3, 20);
+                    
+                    const cp1x = liveStart.x +(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+                    const cp1y = liveStart.y +(distance / 3) * Math.sin(angle) + offset * Math.sin(angle - Math.PI/2);
+                    
+                    const cp2x = liveEnd.x -(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+                    const cp2y = liveEnd.y -(distance / 3) * Math.sin(angle) + offset * Math.sin(angle - Math.PI/2);
+                    
+                    // Calculate the point along the curve
+                    function getBezierPoint(t){
+                        return{
+                            x:Math.pow(1-t, 3) * liveStart.x + 
+                               3 * Math.pow(1-t, 2) * t * cp1x + 
+                               3 *(1-t) * Math.pow(t, 2) * cp2x + 
+                               Math.pow(t, 3) * liveEnd.x,
+                            y:Math.pow(1-t, 3) * liveStart.y + 
+                               3 * Math.pow(1-t, 2) * t * cp1y + 
+                               3 *(1-t) * Math.pow(t, 2) * cp2y + 
+                               Math.pow(t, 3) * liveEnd.y
+                        };
+                    }
+                    
+                    const endPoint = getBezierPoint(liveProgress);
+                    
+                    // Draw the curve to the current progress point
+                    const steps = 30;
+                    ctx.moveTo(liveStart.x, liveStart.y);
+                    
+                    const easedProgress = easeInOutCubic(liveProgress);
+                    for(let i = 0; i <= steps * easedProgress; i++){
+                        const t = i / steps;
+                        const point = getBezierPoint(t);
+                        ctx.lineTo(point.x, point.y);
+                    }
+                    
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                    
+                    // Draw the start point
+                    drawDot(liveStart, color, true);
+                    
+                    // Draw end point growing with progress
+                    if(liveProgress > 0){
+                        // Create a temporary point object for the end
+                        const tempPoint ={
+                            x:endPoint.x,
+                            y:endPoint.y,
+                            key:liveEnd.key
+                        };
+                        drawDot(tempPoint, color, false, true, easedProgress);
+                    }
+                    
+                }else{
+                    // Normal drawing of current word without animation
+                    drawLine(currentWord, color);
+                    
+                    // Only draw the last point to avoid overlap
+                    if(currentWord.length > 0){
+                        drawDot(
+                            currentWord[currentWord.length - 1], 
+                            'black', 
+                            true
+                        );
+                    }
+                }
+            }
+            
+            // Reset blend mode
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Update status
+            updateStatus();
+        }
+
+        // Helper function to update status text
+        function updateStatus(){
+            if(currentWord.length > 0){
+                const wordText = currentWord.map(p => p.key).join('');
+                status.textContent = `${wordText}`;
+                status.style.backgroundColor = getWordColor(currentWord.length);
+            }else{
+                status.textContent = `${words.length} words`;
+                status.style.backgroundColor = '#eee';
+            }
+        }
+        
+        // Handle input with live path animation
+        let lastTyped = "";
+        let typingAnimation = null;
+        
+        inputField.addEventListener('input',(e) =>{
+            const text = e.target.value.toLowerCase();
+            
+            // Complete current word on space
+            if(text.endsWith(' ')){
+                if(currentWord.length > 0){
+                    // Save current word
+                    const newWordIndex = words.length;
+                    words.push({
+                        text:currentWord.map(p => p.key).join(''),
+                        points:[...currentWord]
+                    });
+                    currentWord = [];
+                    inputField.value = '';
+                    lastTyped = '';
+                    
+                    // Cancel any typing animation
+                    if(typingAnimation){
+                        cancelAnimationFrame(typingAnimation);
+                        typingAnimation = null;
+                    }
+                }else if(text === ' '){
+                    inputField.value = '';
+                }
+                
+                drawPaths();
+                return;
+            }
+            
+            // Build current word based on input field
+            const previousWordLength = currentWord.length;
+            currentWord = [];
+            
+            for(let i = 0; i < text.length; i++){
+                const char = text[i];
+                
+                // Skip spaces
+                if(char === ' ') continue;
+                
+                // Add to current word if key exists on our keyboard
+                if(keyPositions[char]){
+                    // Increment key press count
+                    keyPressCounts[char] =(keyPressCounts[char] || 0) + 1;
+                    
+                    currentWord.push({
+                        x:keyPositions[char].x,
+                        y:keyPositions[char].y,
+                        key:char
+                    });
+                }
+            }
+            
+            // Detect if a new character was typed
+            if(text.length > lastTyped.length && currentWord.length > previousWordLength){
+                // Start animation between the last two characters
+                if(currentWord.length >= 2){
+                    // Cancel existing animation
+                    if(typingAnimation){
+                        cancelAnimationFrame(typingAnimation);
+                    }
+                    
+                    // Variables for this specific animation
+                    const startPoint = currentWord[currentWord.length - 2];
+                    const endPoint = currentWord[currentWord.length - 1];
+                    let progress = 0;
+                    const animSpeed = 0.1; // Faster than the word animation
+                    
+                    // Animation function
+                    function animateTyping(){
+                        progress += animSpeed;
+                        
+                        if(progress >= 1){
+                            progress = 1;
+                            typingAnimation = null;
+                        }
+                        
+                        drawPaths(startPoint, endPoint, easeInOutCubic(progress));
+                        
+                        if(progress < 1){
+                            typingAnimation = requestAnimationFrame(animateTyping);
+                        }
+                    }
+                    
+                    // Start the animation
+                    typingAnimation = requestAnimationFrame(animateTyping);
+                }else{
+                    // If it's the first character, just draw it
+                    drawPaths();
+                }
+            }else if(text.length < lastTyped.length){
+                // Character was deleted, cancel animation and redraw
+                if(typingAnimation){
+                    cancelAnimationFrame(typingAnimation);
+                    typingAnimation = null;
+                }
+                drawPaths();
+            }
+            
+            lastTyped = text;
+        });
+        
+        // Clear button
+        clearButton.addEventListener('click',() =>{
+            words = [];
+            currentWord = [];
+            keyPressCounts ={}; // Reset key press counts
+            inputField.value = '';
+            
+            drawPaths();
+            inputField.focus();
+        });
+        
+        // Download button
+        downloadButton.addEventListener('click',() =>{
+            const link = document.createElement('a');
+            link.download = 'keyboard-typing-visualization.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize',() =>{
+            updateCanvasSize();
+            drawPaths();
+        });
+        
+        // Helper function to calculate distance from point to Bezier curve
+        function distanceToBezierCurve(x, y, p1, p2, cp1, cp2){
+            // Sample more points along the curve for better accuracy
+            const steps = 20; // Increased from 10 to 20
+            let minDistance = Infinity;
+            
+            // Store previous point for better distance calculation
+            let prevX = null;
+            let prevY = null;
+            
+            for(let t = 0; t <= 1; t += 1/steps){
+                // Calculate point on Bezier curve at parameter t
+                const curveX = Math.pow(1-t, 3) * p1.x + 
+                             3 * Math.pow(1-t, 2) * t * cp1.x + 
+                             3 *(1-t) * Math.pow(t, 2) * cp2.x + 
+                             Math.pow(t, 3) * p2.x;
+                
+                const curveY = Math.pow(1-t, 3) * p1.y + 
+                             3 * Math.pow(1-t, 2) * t * cp1.y + 
+                             3 *(1-t) * Math.pow(t, 2) * cp2.y + 
+                             Math.pow(t, 3) * p2.y;
+                
+                // Calculate distance to this point
+                const pointDistance = Math.sqrt(
+                    Math.pow(x - curveX, 2) + 
+                    Math.pow(y - curveY, 2)
+                );
+                
+                // If we have a previous point, also check distance to the line segment
+                if(prevX !== null){
+                    const segmentDistance = distanceToLineSegment(
+                        x, y,
+                        prevX, prevY,
+                        curveX, curveY
+                    );
+                    minDistance = Math.min(minDistance, segmentDistance);
+                }
+                
+                minDistance = Math.min(minDistance, pointDistance);
+                
+                prevX = curveX;
+                prevY = curveY;
+            }
+            
+            return minDistance;
+        }
+
+        // Helper function to calculate distance from point to line segment
+        function distanceToLineSegment(x, y, x1, y1, x2, y2){
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            
+            if(length === 0) return Math.sqrt((x - x1) *(x - x1) +(y - y1) *(y - y1));
+            
+            const t = Math.max(0, Math.min(1,((x - x1) * dx +(y - y1) * dy) /(length * length)));
+            
+            const projectionX = x1 + t * dx;
+            const projectionY = y1 + t * dy;
+            
+            return Math.sqrt((x - projectionX) *(x - projectionX) +(y - projectionY) *(y - projectionY));
+        }
+
+        // Handle mouse movement for hover detection
+        canvas.addEventListener('mousemove',(e) =>{
+            const rect = canvas.getBoundingClientRect();
+            const x =(e.clientX - rect.left) *(canvas.width / rect.width) / dpr;
+            const y =(e.clientY - rect.top) *(canvas.height / rect.height) / dpr;
+            
+            // Reset hover state
+            hoveredWord = null;
+            
+            // Check each word's path
+            words.forEach((word, index) =>{
+                if(word.points.length < 2) return;
+                
+                // Check each segment of the path
+                for(let i = 0; i < word.points.length - 1; i++){
+                    const p1 = word.points[i];
+                    const p2 = word.points[i + 1];
+                    
+                    // Calculate the angle between points
+                    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    const distance = Math.sqrt(
+                        Math.pow(p2.x - p1.x, 2) + 
+                        Math.pow(p2.y - p1.y, 2)
+                    );
+                    
+                    // Calculate control points(same as in drawLine)
+                    const offset = Math.min(distance * 0.3, 20);
+                    
+                    const cp1x = p1.x +(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+                    const cp1y = p1.y +(distance / 3) * Math.sin(angle) + offset * Math.sin(angle - Math.PI/2);
+                    
+                    const cp2x = p2.x -(distance / 3) * Math.cos(angle) + offset * Math.cos(angle - Math.PI/2);
+                    const cp2y = p2.y -(distance / 3) * Math.sin(angle) + offset * Math.cos(angle - Math.PI/2);
+                    
+                    // Calculate distance to curve
+                    const curveDistance = distanceToBezierCurve(
+                        x, y, 
+                        p1, p2, 
+                        {x:cp1x, y:cp1y}, 
+                        {x:cp2x, y:cp2y}
+                    );
+                    
+                    // If within hit radius, consider it a hit
+                    if(curveDistance < 8){
+                        hoveredWord = index;
+                        break;
+                    }
+                }
+            });
+            
+            // Update info text position and content
+            if(hoveredWord !== null){
+                const wordColor = getWordColor(words[hoveredWord].points.length);
+                infoText.textContent = words[hoveredWord].text;
+                infoText.style.display = 'block';
+                infoText.style.left = e.clientX + 'px';
+                infoText.style.top = e.clientY + 'px';
+                infoText.style.backgroundColor = wordColor;
+            }else{
+                infoText.style.display = 'none';
+            }
+            
+            drawPaths();
+        });
+        
+        // Reset hover when mouse leaves canvas
+        canvas.addEventListener('mouseleave',() =>{
+            hoveredWord = null;
+            infoText.style.display = 'none';
+            drawPaths();
+        });
+        
+        // Initialize
+        window.addEventListener('load',() =>{
+            updateCanvasSize();
+            drawPaths();
+            inputField.focus();
+            
+            // Add event listeners to maintain focus
+            window.addEventListener('click', () => {
+                inputField.focus();
+            });
+            
+            window.addEventListener('blur', () => {
+                inputField.focus();
+            });
+            
+            // Focus input field when it loses focus
+            inputField.addEventListener('blur', () => {
+                inputField.focus();
+            });
+        });
+    </script>
+</body>
+</html>

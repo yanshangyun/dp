@@ -4,6 +4,9 @@
     left:5px;
     color:black;
     transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+    font-size:12px;
+    font-family:Arial, Helvetica, sans-serif;
+    z-index:1000;
 }
 
 #backButton:hover{

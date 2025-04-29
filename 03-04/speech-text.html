@@ -2,15 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>speech to text</title>
+    <title>Speech to Text with Physics</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        @font-face {
-            font-family:"pantasia";
-            src:url("/pantasia.otf") format("opentype");
-        }
-        
-        body{
-            font-family:pantasia;
+    body{
+            font-family:Arial, Helvetica, sans-serif;
             margin:0;
             padding:0;
             overflow:hidden;
@@ -39,11 +35,9 @@
 
         .word{
             position:absolute;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -50%);
             display:flex;
             font-size:2rem;
+            pointer-events:none;
         }
 
         .letter{
@@ -51,10 +45,28 @@
             display:inline-block;
             transform-origin:center;
             color:rgb(163, 163, 163);
-            filter:drop-shadow(0 0 2px rgb(149, 149, 149));
-            background-color:rgb(221, 221, 221);
             mix-blend-mode:multiply;
-            opacity:0; /* Start hidden */
+            opacity:0;
+            pointer-events:none;
+            font-size:2rem;
+            padding:2px;
+            margin:-1px;
+            z-index:1;
+            /* Optimize rendering */
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+
+        .letter::before {
+            content:'';
+            position:absolute;
+            top:0;
+            left:0;
+            right:0;
+            bottom:0;
+            background-color:white;
+            z-index:-1;
         }
 
         #controls{
@@ -101,7 +113,7 @@
             pointer-events:none;
         }
         
-        #debugInfo {
+        #debugInfo{
             position:fixed;
             top:10px;
             right:10px;
@@ -110,12 +122,21 @@
             font-size:12px;
             z-index:100;
         }
+        
+        #matterCanvas{
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+        }
     </style>
 </head>
 <body>   
     <div class="container">
+        <canvas id="matterCanvas"></canvas>
         <div id="visualContainer"></div>
-        <textarea id="transcript" readonly placeholder="trasnscript..."></textarea>
+        <textarea id="transcript" readonly placeholder="transcript..."></textarea>
         <div id="debugInfo"></div>    
         <div id="controls">
             <button id="startBtn">start</button>
@@ -131,6 +152,161 @@
             const clearBtn = document.getElementById('clearBtn');
             const visualContainer = document.getElementById('visualContainer');
             const debugInfo = document.getElementById('debugInfo');
+            const canvas = document.getElementById('matterCanvas');
+            
+            // Initialize Matter.js
+            const Engine = Matter.Engine;
+            const Render = Matter.Render;
+            const World = Matter.World;
+            const Bodies = Matter.Bodies;
+            const Body = Matter.Body;
+            const Composite = Matter.Composite;
+            
+            // Create engine
+            const engine = Engine.create({
+                // Disable sleeping for continuous physics
+                enableSleeping: false,
+                // Remove gravity
+                gravity: { x: 0, y: 0 },
+                // Optimize engine settings
+                constraintIterations: 2,
+                positionIterations: 6,
+                velocityIterations: 4
+            });
+            
+            // Get window dimensions
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Create renderer
+            const render = Render.create({
+                canvas: canvas,
+                engine: engine,
+                options:{
+                    width: width,
+                    height: height,
+                    wireframes: false,
+                    background: 'transparent',
+                    showSleeping: false
+                }
+            });
+            
+            // Create boundaries to keep objects on screen
+            const wallThickness = 50;
+            const walls = [
+                // Bottom wall
+                Bodies.rectangle(width/2, height + wallThickness/2, width, wallThickness, { 
+                    isStatic: true,
+                    render:{ 
+                        fillStyle: 'transparent',
+                        strokeStyle: 'transparent'
+                    },
+                    collisionFilter: {
+                        group: -1
+                    }
+                }),
+                // Top wall
+                Bodies.rectangle(width/2, -wallThickness/2, width, wallThickness, { 
+                    isStatic: true,
+                    render:{ 
+                        fillStyle: 'transparent',
+                        strokeStyle: 'transparent'
+                    },
+                    collisionFilter: {
+                        group: -1
+                    }
+                }),
+                // Left wall
+                Bodies.rectangle(-wallThickness/2, height/2, wallThickness, height, { 
+                    isStatic: true,
+                    render:{ 
+                        fillStyle: 'transparent',
+                        strokeStyle: 'transparent'
+                    },
+                    collisionFilter: {
+                        group: -1
+                    }
+                }),
+                // Right wall
+                Bodies.rectangle(width + wallThickness/2, height/2, wallThickness, height, { 
+                    isStatic: true,
+                    render:{ 
+                        fillStyle: 'transparent',
+                        strokeStyle: 'transparent'
+                    },
+                    collisionFilter: {
+                        group: -1
+                    }
+                })
+            ];
+            
+            // Add walls to world
+            World.add(engine.world, walls);
+            
+            // Start the engine and renderer
+            Engine.run(engine);
+            Render.run(render);
+            
+            // Track physical bodies and their corresponding DOM elements
+            const physicsObjects = new Map();
+            
+            // Track center position
+            let centerX = width / 2;
+            let centerY = height / 2;
+            
+            // Performance monitoring
+            let lastTime = performance.now();
+            let frameCount = 0;
+            let physicsUpdateTime = 0;
+            let lastCleanupTime = performance.now();
+            
+            // Cleanup off-screen letters
+            function cleanupOffScreenLetters() {
+                const currentTime = performance.now();
+                if (currentTime - lastCleanupTime < 5000) return; // Only check every 5 seconds
+                lastCleanupTime = currentTime;
+                
+                const margin = 200; // Margin outside viewport
+                const toRemove = [];
+                
+                physicsObjects.forEach((obj, id) => {
+                    const { element, body } = obj;
+                    if (body && element) {
+                        const { x, y } = body.position;
+                        // Check if body is far off-screen
+                        if (x < -margin || x > width + margin || 
+                            y < -margin || y > height + margin) {
+                            toRemove.push({ id, element, body });
+                        }
+                    }
+                });
+                
+                // Remove off-screen elements
+                toRemove.forEach(({ id, element, body }) => {
+                    World.remove(engine.world, body);
+                    element.remove();
+                    physicsObjects.delete(id);
+                });
+                
+                if (toRemove.length > 0) {
+                    debug(`Cleaned up ${toRemove.length} off-screen letters`);
+                }
+            }
+            
+            function updatePerformanceStats() {
+                const currentTime = performance.now();
+                frameCount++;
+                
+                if (currentTime - lastTime >= 1000) {
+                    const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                    const avgPhysicsTime = Math.round(physicsUpdateTime / frameCount);
+                    debug(`FPS: ${fps} | Avg Physics Update: ${avgPhysicsTime}ms | Bodies: ${physicsObjects.size}`);
+                    
+                    frameCount = 0;
+                    physicsUpdateTime = 0;
+                    lastTime = currentTime;
+                }
+            }
             
             // check browser support
             if(!('webkitSpeechRecognition' in window)){
@@ -142,106 +318,174 @@
             let isListening = false;
             let previousTranscript = "";
             let animatedWords = new Set();
-            
-            // Keep track of animation count to create unique identifiers
             let animationCount = 0;
             
             // debug
-            function debug(msg) {
+            function debug(msg){
                 debugInfo.textContent = msg;
                 console.log(msg);
             }
-
-            function createAnimatedWord(word) {
-                if (!word || word.length === 0) return;
+            
+            // Create a physics body and visual element for a word
+            function createPhysicsWord(word){
+                if(!word || word.length === 0) return;
                 
                 debug(`Animating word: ${word}`);
                 
-                // Create word element
+                // Create word container
                 const wordElement = document.createElement('div');
                 wordElement.className = 'word';
                 
-                // Random direction and distance for the whole word
-                const angle = Math.random() * Math.PI * 2; // Random angle in radians
-                const distance = 100 + Math.random() * 200; // Random distance between 100-300px
+                // Random direction and impulse for the physics body
+                const angle = Math.random() * Math.PI * 2;
+                const force = 0.02 + Math.random() * 0.04;
                 
-                // Calculate end position based on angle and distance
-                const endX = Math.cos(angle) * distance;
-                const endY = Math.sin(angle) * distance;
+                // Create a composite to hold all letter bodies
+                const wordComposite = Composite.create();
                 
-                // Base animation duration and delay between letters
-                const letterAnimDuration = 1; // seconds
-                const letterDelayIncrement = 0.1; // seconds
-                
-                // Add individual letters with their own rotation and position
-                for(let i = 0; i < word.length; i++) {
+                // Create individual letter elements and their physics bodies
+                for(let i = 0; i < word.length; i++){
                     const letterSpan = document.createElement('span');
                     letterSpan.className = 'letter';
                     letterSpan.textContent = word[i];
                     
-                    const uniqueAnimId = `spin_${animationCount}_${i}`;
+                    // Create physics body for the letter
+                    const letterBody = Bodies.rectangle(
+                        centerX + (i * 20), // Offset each letter horizontally from center
+                        centerY,
+                        20, // Letter width
+                        30, // Letter height
+                        {
+                            restitution: 0.7,
+                            friction: 0.05,
+                            frictionAir: 0.01,
+                            frictionStatic: 0.3,
+                            density: 0.001,
+                            render:{
+                                fillStyle: 'transparent',
+                                strokeStyle: 'transparent'
+                            },
+                            // Prevent sleeping
+                            sleepThreshold: Infinity,
+                            // Optimize collision detection
+                            collisionFilter: {
+                                group: 0,
+                                category: 0x0001,
+                                mask: 0xFFFF
+                            },
+                            // Optimize body properties
+                            chamfer: { radius: 2 },
+                            slop: 0.5
+                        }
+                    );
                     
-                    // random rotation
-                    const rotation = -45 + Math.random() * 90; // -45 to 45 deg
+                    // Add letter body to composite
+                    Composite.add(wordComposite, letterBody);
                     
-                    // position offset
-                    const letterOffsetX = -5 + Math.random() * 10; // -5 to 5 px
-                    const letterOffsetY = -15 + Math.random() * 30; // -15 to 15 px
+                    // Store reference to DOM element
+                    physicsObjects.set(letterBody.id, {
+                        element: letterSpan,
+                        body: letterBody
+                    });
                     
-                    letterSpan.style.left = `calc(${i * 0.5}em + ${letterOffsetX}px)`;
-                    letterSpan.style.top = `${letterOffsetY}px`;
-                    
-                    // Calculate delay for this letter (sequential animation)
-                    const letterDelay = i * letterDelayIncrement;
-                    
-                    // Apply animation with delay to each letter
-                    letterSpan.style.animation = `${uniqueAnimId} ${letterAnimDuration}s ${letterDelay}s forwards cubic-bezier(.11,.71,.3,.95)`;
-                    
-                    // Store rotation on the element for reference
-                    letterSpan.dataset.rotation = rotation;
-                    
-                    // Create keyframe animation for this specific letter
+                    // Add letter to word container
+                    wordElement.appendChild(letterSpan);
+
+                    // Add animation for letter appearance
+                    const uniqueAnimId = `fade_${animationCount}_${i}`;
                     const styleSheet = document.styleSheets[0];
-                    const keyframes = `@keyframes ${uniqueAnimId} {
+                    const keyframes = `@keyframes ${uniqueAnimId}{
                         0%{
-                            transform:rotate(0deg) scale(0.2);
                             opacity:0;
-                            filter:blur(5px) drop-shadow(0);
+                            transform:scale(0.2);
+                            filter:blur(5px);
                         }
                         100%{
-                            transform:rotate(${rotation}deg) scale(1);
                             opacity:1;
-                            filter:blur(0) drop-shadow(0 0 10px #dadada);
+                            transform:scale(1);
+                            filter:blur(0);
                         }
                     }`;
-
                     styleSheet.insertRule(keyframes, styleSheet.cssRules.length);
                     
-                    wordElement.appendChild(letterSpan);
+                    // Apply animation with delay
+                    const letterDelay = i * 0.1;
+                    letterSpan.style.animation = `${uniqueAnimId} 1s ${letterDelay}s forwards cubic-bezier(.11,.71,.3,.95)`;
                 }
                 
-                // Add to container
+                // Add the composite to the world
+                World.add(engine.world, wordComposite);
+                
+                // Add word container to DOM
                 visualContainer.appendChild(wordElement);
                 
-                // Total word animation duration (base time + time for all letters)
-                const totalAnimDuration = 1000;
-                
-                // Animate the word moving outward
-                wordElement.animate([
-                    { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 1 },
-                    { transform: `translate(calc(-50% + ${endX}px), calc(-50% + ${endY}px)) scale(1)`, opacity: 1 }
-                ], {
-                    duration: totalAnimDuration,
-                    easing: 'cubic-bezier(.11,.71,.3,.95)', // Spring-like easing
-                    fill: 'forwards'
+                // Apply initial force to each letter in the composite
+                Composite.allBodies(wordComposite).forEach(body => {
+                    Body.applyForce(body, 
+                        body.position, 
+                        {
+                            x: Math.cos(angle) * force * 0.5,
+                            y: Math.sin(angle) * force * 0.5
+                        }
+                    );
+                    
+                    // Apply slight rotation
+                    const rotationSpeed = -0.02 + Math.random() * 0.04;
+                    Body.setAngularVelocity(body, rotationSpeed);
                 });
                 
-                // Increment animation counter
                 animationCount++;
+                return wordComposite;
             }
 
+            // Update positions of DOM elements based on physics bodies
+            function updateElements(){
+                const startTime = performance.now();
+                
+                // Check for cleanup
+                cleanupOffScreenLetters();
+                
+                // Batch DOM updates
+                const updates = [];
+                physicsObjects.forEach((obj, id) => {
+                    const { element, body } = obj;
+                    
+                    if(body && element){
+                        // Get position and rotation from physics body
+                        const { x, y } = body.position;
+                        const angle = body.angle;
+                        
+                        // Collect updates
+                        updates.push(() => {
+                            element.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+                            element.style.left = `${x}px`;
+                            element.style.top = `${y}px`;
+                        });
+                        
+                        // Wake up the body if it's sleeping
+                        if(body.isSleeping){
+                            Body.set(body, 'sleeping', false);
+                        }
+                    }
+                });
+                
+                // Apply updates in a single batch
+                requestAnimationFrame(() => {
+                    updates.forEach(update => update());
+                });
+                
+                physicsUpdateTime += performance.now() - startTime;
+                updatePerformanceStats();
+                
+                // Request next frame
+                requestAnimationFrame(updateElements);
+            }
+            
+            // Start the rendering loop
+            updateElements();
+
             // Create a new recognition instance for each session
-            function createRecognition() {
+            function createRecognition(){
                 const recognition = new webkitSpeechRecognition();
                 
                 // Configure
@@ -261,24 +505,23 @@
                     stopBtn.classList.remove('disabled');
                 };
                 
-                // Process results word by word as they come in
+                // Process results word by word
                 recognition.onresult = (event) => {
                     const result = event.results[0][0].transcript.trim();
                     debug(`Got result: "${result}"`);
                     
-                    if (result && result !== previousTranscript) {
-                        // Find the new words by comparing with the previous transcript
+                    if(result && result !== previousTranscript){
+                        // Find the new words by comparing with previous transcript
                         const allWords = result.split(/\s+/);
-                        const previousWords = previousTranscript.split(/\s+/);
                         
                         // Find words that are new in this result
-                        for (let i = 0; i < allWords.length; i++) {
+                        for(let i = 0; i < allWords.length; i++){
                             const word = allWords[i].toLowerCase();
                             
                             // Skip words we've already animated
-                            if (!animatedWords.has(word) && word.length > 0) {
+                            if(!animatedWords.has(word) && word.length > 0){
                                 debug(`New word: ${word}`);
-                                createAnimatedWord(allWords[i]);
+                                createPhysicsWord(allWords[i]);
                                 animatedWords.add(word);
                                 
                                 // Add to transcript
@@ -294,7 +537,7 @@
                     debug(`Error: ${event.error}`);
                     console.error('Speech recognition error', event.error);
                     
-                    if (isListening) {
+                    if(isListening){
                         // Restart recognition after a short delay
                         setTimeout(() => {
                             startRecognition();
@@ -305,15 +548,15 @@
                 recognition.onend = () => {
                     debug("Recognition ended");
                     
-                    if (isListening) {
-                        // Clear previous transcript between sessions to avoid duplicates
+                    if(isListening){
+                        // Clear previous transcript between sessions
                         previousTranscript = "";
                         
                         // Restart recognition immediately
                         setTimeout(() => {
                             startRecognition();
                         }, 10);
-                    } else {
+                    } else{
                         startBtn.disabled = false;
                         stopBtn.disabled = true;
                         startBtn.classList.remove('disabled');
@@ -328,18 +571,18 @@
             let recognition = createRecognition();
             
             // Function to start recognition
-            function startRecognition() {
-                if (!isListening) return;
+            function startRecognition(){
+                if(!isListening) return;
                 
                 // Create new recognition instance each time
                 recognition = createRecognition();
                 
-                try {
+                try{
                     recognition.start();
                     debug("Starting new recognition session");
-                } catch (e) {
+                } catch(e){
                     debug(`Error starting: ${e.message}`);
-                    // If there's an error, wait a bit longer before trying again
+                    // If there's an error, wait before trying again
                     setTimeout(() => {
                         startRecognition();
                     }, 500);
@@ -363,8 +606,65 @@
                 transcriptArea.value = '';
                 previousTranscript = "";
                 animatedWords.clear();
+                
+                // Remove all physics bodies except walls
+                const bodies = Composite.allBodies(engine.world);
+                for(let i = 0; i < bodies.length; i++){
+                    if(!bodies[i].isStatic){
+                        World.remove(engine.world, bodies[i]);
+                    }
+                }
+                
+                // Clear visuals
                 visualContainer.innerHTML = '';
+                physicsObjects.clear();
+                
                 debug("Cleared");
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newWidth = window.innerWidth;
+                const newHeight = window.innerHeight;
+                
+                // Update center position
+                centerX = newWidth / 2;
+                centerY = newHeight / 2;
+                
+                // Update renderer dimensions
+                render.options.width = newWidth;
+                render.options.height = newHeight;
+                render.canvas.width = newWidth;
+                render.canvas.height = newHeight;
+                
+                // Update wall positions and vertices
+                const wallThickness = 50;
+                
+                // Bottom wall
+                Body.setPosition(walls[0], { x: newWidth/2, y: newHeight + wallThickness/2 });
+                Body.setVertices(walls[0], Bodies.rectangle(newWidth/2, newHeight + wallThickness/2, newWidth, wallThickness).vertices);
+                
+                // Top wall
+                Body.setPosition(walls[1], { x: newWidth/2, y: -wallThickness/2 });
+                Body.setVertices(walls[1], Bodies.rectangle(newWidth/2, -wallThickness/2, newWidth, wallThickness).vertices);
+                
+                // Left wall
+                Body.setPosition(walls[2], { x: -wallThickness/2, y: newHeight/2 });
+                Body.setVertices(walls[2], Bodies.rectangle(-wallThickness/2, newHeight/2, wallThickness, newHeight).vertices);
+                
+                // Right wall
+                Body.setPosition(walls[3], { x: newWidth + wallThickness/2, y: newHeight/2 });
+                Body.setVertices(walls[3], Bodies.rectangle(newWidth + wallThickness/2, newHeight/2, wallThickness, newHeight).vertices);
+                
+                // Update all physics objects' positions relative to the new window size
+                physicsObjects.forEach((obj, id) => {
+                    const { element, body } = obj;
+                    if(body && element){
+                        const { x, y } = body.position;
+                        element.style.left = `${x}px`;
+                        element.style.top = `${y}px`;
+                    }
+                });
             });
         });
     </script>

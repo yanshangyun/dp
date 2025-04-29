@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>unicode library</title>
+    <style>
+        body{
+            font-family:sans-serif;
+            margin:0;
+            padding:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background-color:black;
+            cursor:crosshair;
+            height:100vh;
+            overflow:hidden;
+        }
+
+        ::selection{
+            background-color:black;
+            color:rgb(230, 230, 230);
+        }
+
+        ::-webkit-scrollbar{
+            display:none;
+        }
+
+        ::-webkit-scrollbar-thumb{
+            display:none;
+        }
+
+        .grid-container{
+            position:relative;
+            margin:20px;
+            cursor:none;
+            user-select:none;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+        }
+        
+        .grid{
+            display:grid;
+        }
+        
+        .cell{
+            /* border:0.5px solid rgb(230, 230, 230); */
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            overflow:hidden;
+            position:relative;
+            background-color:black;
+            color:rgb(230, 230, 230);
+            z-index:0;
+            transform:translate(0%, 0%);
+            transform-origin:center;
+            opacity:1;
+            transition:all 0.5s cubic-bezier(.06,.62,.23,1);
+        }
+        
+        .cell.active{
+            z-index:1000;
+            border:0.5px solid rgb(230, 230, 230);
+            background-color:rgb(230, 230, 230);
+            color:black;
+        }
+        
+        .cell.active::after{
+            content:"";
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            z-index:1001;
+        }
+        
+        .cell.react{
+            z-index:0;
+        }
+
+        .cell.fade-out{
+            opacity:0;
+        }
+        
+        .cell.fade-in{
+            opacity:1;
+        }
+
+        .cell.active.pressed{
+            background-color:black;
+            color:white;
+            transition:all 0.1s;
+        }
+
+        .editor-container{
+            position:fixed;
+            border:0.5px solid rgb(230, 230, 230);
+            padding:10px;
+            background:black;
+            z-index:1000;
+            transition:box-shadow 0.2s cubic-bezier(.06,.62,.23,1);
+            resize:both;
+            overflow:hidden;
+            width:200px;
+            height:200px;
+            min-width:200px;
+            min-height:200px;
+        }
+
+        .editor-container:hover{
+            box-shadow:0 0 20px rgba(255, 255, 255, 0.25);
+        }
+
+        .drag-handle{
+            position:absolute;
+            top:0;
+            left:0;
+            right:0;
+            height:20px;
+            cursor:move;
+            background-color:rgb(230, 230, 230);
+        }
+
+        #editor{
+            width:100%;
+            height:calc(100% - 60px);
+            border:none;
+            outline:none;
+            resize:none;
+            font-family:sans-serif;
+            font-size:12px;
+            line-height:1.2;
+            white-space:pre-wrap;
+            word-wrap:break-word;
+            overflow:auto;
+            padding:0;
+            margin-top:20px;
+            box-sizing:border-box;
+            max-width:100%;
+            color:rgb(230, 230, 230);
+            background-color:transparent;
+        }
+
+        .control-container{
+            position:absolute;
+            bottom:10px;
+            left:10px;
+            right:10px;
+            display:flex;
+            align-items:center;
+            gap:10px;
+        }
+
+        .copy-button, #refreshButton{
+            padding:5px 10px;
+            border:0.5px solid rgb(230, 230, 230);
+            color:rgb(230, 230, 230);
+            background-color:transparent;
+            cursor:pointer;
+            font-size:12px;
+            transition:all 0.2s;
+        }
+
+        .copy-button:hover, #refreshButton:hover{
+            background-color:rgb(230, 230, 230);
+            color:black;
+        }
+
+        #refreshButton{
+            position:fixed;
+            bottom:10px;
+            right:10px;
+        }
+
+        .size-slider{
+            flex-grow:1;
+            height:0.5px;
+            background:rgb(230, 230, 230);
+            -webkit-appearance:none;
+            appearance:none;
+        }
+
+        .size-slider::-webkit-slider-thumb{
+            -webkit-appearance:none;
+            appearance:none;
+            width:10px;
+            height:10px;
+            border:0.5px solid rgb(230, 230, 230);
+            background-color:black;
+            cursor:pointer;
+        }
+
+        .size-slider::-webkit-slider-thumb:hover{
+            background-color:rgb(230, 230, 230);
+        }
+
+        #info{
+            height:30px;
+            font-size:12px;
+            text-align:center;
+            margin-top:20px;
+            color:white;
+        }
+    </style>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <a href="../index.html" id="backButton">← Back</a>
+    <div class="grid-container" id="grid-container">
+        <div class="grid" id="unicode-grid"></div>
+        <div id="info"></div>
+    </div>
+    <div class="editor-container" id="editor-container">
+        <div class="drag-handle"></div>
+        <textarea id="editor" readonly></textarea>
+        <div class="control-container">
+            <input type="range" class="size-slider" min="8" max="24" value="12">
+            <button class="copy-button">copy</button>
+        </div>
+    </div>
+    <button id="refreshButton">↺</button>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const GRID_CONFIG ={
+                size:48, //grid width, height
+                cellSize:10,
+                gap:2,
+                fontSize:8, //base size
+                activeFontSize:30,
+                activeCellSize:40,
+                pressedCellSize:10,
+                reactionRadius:10,  //radius of hover effect
+                maxReactionDistance:8, //range of effect
+                maxReactionDisplacement:20, //"force" field displacement distance
+                clickReactionRadius:8, //radius of effect on click
+                clickMaxReactionDistance:9, //radius affected by displacement gradient
+                clickMaxReactionDisplacement:-10 //displacement distance on click
+            };
+
+            const gridContainer = document.getElementById('grid-container');
+            const grid = document.getElementById('unicode-grid');
+            const info = document.getElementById('info');
+            const editor = document.getElementById('editor');
+            
+            //update grid styles
+            grid.style.gridTemplateColumns = `repeat(${GRID_CONFIG.size}, ${GRID_CONFIG.cellSize}px)`;
+            grid.style.gridAutoRows = `${GRID_CONFIG.cellSize}px`;
+            grid.style.gap = `${GRID_CONFIG.gap}px`;
+            
+            //update cell styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .cell{
+                    width:${GRID_CONFIG.cellSize}px;
+                    height:${GRID_CONFIG.cellSize}px;
+                    font-size:${GRID_CONFIG.fontSize}px;
+                }
+                .cell.active{
+                    z-index:1001;
+                    width:${GRID_CONFIG.activeCellSize}px;
+                    height:${GRID_CONFIG.activeCellSize}px;
+                    font-size:${GRID_CONFIG.activeFontSize}px;
+                    transform:translate(-${(GRID_CONFIG.activeCellSize - GRID_CONFIG.cellSize) / 2}px, -${(GRID_CONFIG.activeCellSize - GRID_CONFIG.cellSize) / 2}px) !important;
+                }
+                .cell.active.pressed{
+                    width:${GRID_CONFIG.pressedCellSize}px;
+                    height:${GRID_CONFIG.pressedCellSize}px;
+                    font-size:${GRID_CONFIG.fontSize}px;
+                    transform:translate(-${(GRID_CONFIG.pressedCellSize - GRID_CONFIG.cellSize) / 2}px, -${(GRID_CONFIG.pressedCellSize - GRID_CONFIG.cellSize) / 2}px) !important;
+                    transition:all 0.1s;
+                    background-color:transparent;
+                    border:none;
+                    z-index:1001;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            //unicode ranges
+            const unicodeRanges = [
+              { start:0x0020, end:0x007F }, //basic latin
+              { start:0x00A0, end:0x00FF }, //latin-1 supplement
+              { start:0x0100, end:0x017F }, //latin extended-a
+              { start:0x0180, end:0x024F }, //latin extended-b
+              { start:0x0250, end:0x02AF }, //ipa extensions
+              { start:0x0370, end:0x03FF }, //greek and coptic
+              { start:0x0400, end:0x04FF }, //cyrillic
+              { start:0x0500, end:0x052F }, //cyrillic supplement
+              { start:0x1D00, end:0x1D7F }, //phonetic extensions
+              { start:0x1D80, end:0x1DBF }, //phonetic extensions supplement
+              { start:0x1E00, end:0x1EFF }, //latin extended additional
+              { start:0x2000, end:0x206F }, //general punctuation
+              { start:0x2070, end:0x209F }, //superscripts and subscripts
+              { start:0x20A0, end:0x20CF }, //currency symbols
+              { start:0x20D0, end:0x20FF }, //combining diacritical marks for symbols
+              { start:0x2100, end:0x214F }, //letterlike symbols
+              { start:0x2150, end:0x218F }, //number forms
+              { start:0x2190, end:0x21FF }, //arrows
+              { start:0x2200, end:0x22FF }, //mathematical operators
+              { start:0x2300, end:0x23FF }, //miscellaneous technical
+              { start:0x2400, end:0x243F }, //control pictures
+              { start:0x2440, end:0x245F }, //optical character recognition
+              { start:0x2460, end:0x24FF }, //enclosed alphanumerics
+              { start:0x2500, end:0x257F }, //box drawing
+              { start:0x2580, end:0x259F }, //block elements
+              { start:0x25A0, end:0x25FF }, //geometric shapes
+                //misc symbols
+              { start:0x2607, end:0x260D }, //astronomical symbols
+              { start:0x260F, end:0x2610 }, //telephone symbols
+              { start:0x2612, end:0x2613 }, //ballot box with x and saltire
+              { start:0x261A, end:0x261B }, //hand symbols
+              { start:0x261D, end:0x261D }, //index finger (still may render as emoji)
+              { start:0x261F, end:0x2637 }, //technical symbols and i ching trigrams
+              { start:0x263D, end:0x2647 }, //moon and planetary symbols
+              { start:0x2654, end:0x265F }, //chess symbols
+              { start:0x2662, end:0x2662 }, //white diamond suit
+              { start:0x2664, end:0x2664 }, //white spade suit
+              { start:0x2667, end:0x2667 }, //white club suit
+              { start:0x2669, end:0x266D }, //musical notation
+              { start:0x266F, end:0x266F }, //musical sharp
+              { start:0x2670, end:0x2671 }, //west/east syriac cross
+              { start:0x2672, end:0x267D }, //recycling symbols
+              { start:0x267E, end:0x267E }, //permanent paper sign
+              { start:0x2680, end:0x2685 }, //die faces
+              { start:0x2690, end:0x2691 }, //white flag, black flag
+              { start:0x2695, end:0x2695 }, //staff of aesculapius
+              { start:0x2698, end:0x269B }, //flower, gear, staff symbols
+              { start:0x269D, end:0x269F }, //outlined greek cross and other symbols
+              { start:0x26A2, end:0x26A9 }, //gender symbols
+              { start:0x26AD, end:0x26B1 }, //marriage symbols, funeral urn
+              { start:0x26B3, end:0x26BC }, //ceres, pallas, partially-circled symbols
+              { start:0x26C0, end:0x26C3 }, //chess symbols
+              { start:0x26E2, end:0x26E9 }, //astronomical and astrological symbols
+              { start:0x26EB, end:0x26F0 }, //castle, map symbols
+              { start:0x26F6, end:0x26FA }, //square four corners, triangle upside down
+                //dingbats
+              { start:0x2701, end:0x2704 }, //scissors and related symbols
+              { start:0x2706, end:0x2707 }, //telephone symbols
+              { start:0x270C, end:0x270D }, //victory hand and writing hand - still might render as emoji
+              { start:0x2710, end:0x2711 }, //pen symbols
+              { start:0x2712, end:0x2714 }, //nib to heavy check mark
+              { start:0x2719, end:0x271C }, //ballot symbols to heavy open center cross
+              { start:0x271D, end:0x2721 }, //latin cross to star of david
+              { start:0x2722, end:0x2727 }, //four teardrop symbols to white four pointed star
+              { start:0x272A, end:0x274B }, //various stars and symbols
+              { start:0x274F, end:0x2752 }, //various circles
+              { start:0x2756, end:0x2756 }, //black diamond minus white x
+              { start:0x2758, end:0x275E }, //various line symbols
+              { start:0x2761, end:0x2763 }, //curved lines
+              { start:0x2766, end:0x2775 }, //hearts and rotated symbols
+              { start:0x2794, end:0x2794 }, //heavy wide-headed rightwards arrow
+              { start:0x2798, end:0x27AF }, //various technical symbols
+              { start:0x27B1, end:0x27BE },  //technical symbols
+              { start:0x27C0, end:0x27EF }, //miscellaneous mathematical symbols-a
+              { start:0x27F0, end:0x27FF }, //supplemental arrows-a
+              { start:0x2800, end:0x28FF }, //braille patterns
+              { start:0x2900, end:0x297F }, //supplemental arrows-b
+              { start:0x2980, end:0x29FF }, //miscellaneous mathematical symbols-b
+              { start:0x2A00, end:0x2AFF }, //supplemental mathematical operators
+              { start:0x2C00, end:0x2C5F }, //glagolitic
+              { start:0x2C60, end:0x2C7F }, //latin extended-c
+              { start:0x2C80, end:0x2CFF }, //coptic
+              { start:0x2E00, end:0x2E7F }, //supplemental punctuation
+              { start:0x2E80, end:0x2EFF }, //cjk radicals supplement
+              { start:0x2F00, end:0x2FDF }, //kangxi radicals
+              { start:0x2FF0, end:0x2FFF }, //ideographic description characters
+              { start:0x3000, end:0x303F }, //cjk symbols and punctuation
+              { start:0x3040, end:0x309F }, //hiragana
+              { start:0x30A0, end:0x30FF }, //katakana
+              { start:0x3100, end:0x312F }, //bopomofo
+              { start:0x3190, end:0x319F }, //kanbun
+              { start:0x31A0, end:0x31BF }, //bopomofo extended
+              { start:0x31C0, end:0x31EF }, //cjk strokes
+              { start:0x31F0, end:0x31FF }, //katakana phonetic extensions
+              { start:0x3200, end:0x32FF }, //enclosed cjk letters and months
+              { start:0x3300, end:0x33FF }, //cjk compatibility
+              { start:0x4DC0, end:0x4DFF }, //yijing hexagram symbols
+              { start:0xFE10, end:0xFE1F }, //vertical forms
+              { start:0xFE50, end:0xFE6F }, //small form variants
+              { start:0xFF00, end:0xFFEF }, //halfwidth and fullwidth forms
+              { start:0xFFF0, end:0xFFFF }, //specials
+              { start:0x1D504, end:0x1D537 }, //mathematical blackletter symbols
+              { start:0x1D400, end:0x1D433 }, //mathematical bold
+              { start:0x1D434, end:0x1D467 }, //mathematical italic
+              { start:0x1D468, end:0x1D49B }, //mathematical bold italic
+              { start:0x1D49C, end:0x1D4CF }, //mathematical script
+              { start:0x1D4D0, end:0x1D503 }, //mathematical bold script
+              { start:0x1D504, end:0x1D537 }, //mathematical blackletter (fraktur)
+              { start:0x1D538, end:0x1D56B }, //mathematical bold fraktur
+              { start:0x1D56C, end:0x1D59F }, //mathematical sans-serif
+              { start:0x1D5A0, end:0x1D5D3 }, //mathematical sans-serif bold
+              { start:0x1D5D4, end:0x1D607 }, //mathematical sans-serif italic
+              { start:0x1D608, end:0x1D63B }, //mathematical sans-serif bold italic
+              { start:0x1D63C, end:0x1D66F }, //mathematical monospace
+              { start:0x1D670, end:0x1D6A3 }, //mathematical bold digits
+              { start:0x1D6A4, end:0x1D6A5 }, //mathematical italic digits
+              { start:0x1D6A8, end:0x1D6C0 }, //mathematical bold greek
+              { start:0x1D6C1, end:0x1D6E1 }, //mathematical italic greek
+              { start:0x1D6E2, end:0x1D6FA }, //mathematical bold italic greek
+              { start:0x1D6FB, end:0x1D71B }, //mathematical sans-serif bold greek
+              { start:0x1D71C, end:0x1D734 }, //mathematical sans-serif bold italic greek
+              { start:0x1D7CE, end:0x1D7FF }, //mathematical digits
+              { start:0x1D49C, end:0x1D4CF }, //mathematical script
+              { start:0x2460, end:0x24FF }, //enclosed alphanumerics
+              { start:0x2776, end:0x2793 }, //dingbat circled digits
+              { start:0x1F100, end:0x1F10A }, //digit zero to nine full stop
+              { start:0x1F110, end:0x1F16B }, //parenthesized latin letters and other enclosed alphanumerics
+              { start:0x1F170, end:0x1F189 },  //negative squared latin letters
+              { start:0xFB00, end:0xFB4F }, //upside down letters (alphabetic presentation forms)
+              { start:0x1D400, end:0x1D433 }, //bold (mathematical bold)
+              { start:0x1D434, end:0x1D467 }, //italic (mathematical italic)
+              { start:0x2460, end:0x24FF }, //circular enclosed (enclosed alphanumerics)
+              { start:0x1D538, end:0x1D56B }, //double stroke (mathematical double-struck)
+              { start:0x1FA00, end:0x1FA53 }, //chess symbols (additional)
+              { start:0x1F000, end:0x1F02F }, //mahjong tiles
+              { start:0x1F030, end:0x1F09F }, //domino tiles
+              { start:0x1F0A0, end:0x1F0FF }, //playing cards
+              { start:0x1D100, end:0x1D1FF }, //musical symbols
+            ];
+            
+            //array of all code points for random selection
+            let allCodePoints = [];
+            unicodeRanges.forEach(range =>{
+                for (let charCode = range.start; charCode <= range.end; charCode++){
+                    allCodePoints.push(charCode);
+                }
+            });
+                        
+            //randomize the order
+            function shuffleArray(array){
+                for (let i = array.length - 1; i > 0; i--){
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            //shuffle code points
+            shuffleArray(allCodePoints);
+            
+            const cols = GRID_CONFIG.size; //columns
+            const totalCells = cols * cols; //calculate total cells
+            
+            //select a random subset if we have more code points than cells
+            const selectedCodePoints = allCodePoints.slice(0, totalCells);
+            
+            //reshape after potential duplication
+            shuffleArray(selectedCodePoints);
+            
+            //generate cells with random characters
+            let cellsArray = [];
+            
+            for (let i = 0; i < totalCells; i++){
+                try{
+                    const charCode = selectedCodePoints[i];
+                    const char = String.fromCodePoint(charCode);
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'cell visible fade-out';
+                    cell.textContent = char + "\uFE0E"; //prevent emoji rendering
+                    cell.dataset.charCode = charCode;
+                    cell.dataset.index = i;
+                    
+                    grid.appendChild(cell);
+                    cellsArray.push(cell);
+
+                    //fade in with random delay
+                    const delay = Math.random() * 500;
+                    setTimeout(() => {
+                        cell.classList.remove('fade-out');
+                        cell.classList.add('fade-in');
+                    }, delay);
+                } catch (e){
+                    //empty cell for invalid code points
+                    const cell = document.createElement('div');
+                    cell.className = 'cell visible fade-out';
+                    cell.textContent = ' ';
+                    cell.dataset.charCode = '0020'; //space
+                    cell.dataset.index = i;
+                    cell.style.backgroundColor = 'red';
+                    
+                    grid.appendChild(cell);
+                    cellsArray.push(cell);
+
+                    //fade in with random delay
+                    const delay = Math.random() * 500;
+                    setTimeout(() => {
+                        cell.classList.remove('fade-out');
+                        cell.classList.add('fade-in');
+                    }, delay);
+                }
+            }
+
+            //calculate rows based on total cells divided by columns
+            const rows = Math.ceil(cellsArray.length / cols);
+            
+            //get the actual grid measurements from the dom after it's been rendered
+            //this ensures we have the correct measurements for mouse position calculations
+            let gridRect = null;
+            let cellWidthWithBorder = 0;
+            let cellHeightWithBorder = 0;
+            
+            //function to update grid measurements
+            function updateGridMeasurements(){
+                gridRect = grid.getBoundingClientRect();
+                
+                //get a cell for measurement
+                if (cellsArray.length > 0){
+                    const cellRect = cellsArray[0].getBoundingClientRect();
+                    cellWidthWithBorder = gridRect.width / cols;
+                    cellHeightWithBorder = gridRect.height / rows; // Use grid height divided by rows
+                }
+            }
+            
+            //update measurements after initial render
+            setTimeout(updateGridMeasurements, 0);
+            
+            //hide cursor when entering grid
+            gridContainer.addEventListener('mouseenter', function(){
+                //update measurements on each mouse enter to ensure accuracy
+                updateGridMeasurements();
+            });
+            
+            //show cursor when leaving grid
+            gridContainer.addEventListener('mouseleave', function(){
+                info.textContent = ''; //clear info text
+                
+                //reset cell states
+                cellsArray.forEach(cell =>{
+                    cell.classList.remove('active');
+                    cell.style.transform = 'translate(0%, 0%)';
+                    cell.classList.remove('react');
+                });
+                
+                //clear the set tracking reacted cells
+                lastReactedCells.clear();
+                lastActiveCell = null;
+            });
+            
+            //track mouse movement and update hover states
+            let lastActiveCell = null;
+            let lastReactedCells = new Set(); //track cells that were previously reacted
+            
+            //function to deactivate cells
+            function deactivateCell(cell){
+                cell.classList.remove('active');
+            }
+            
+            //function to calculate distance between cells
+            function getCellDistance(cell1, cell2){
+                const index1 = parseInt(cell1.dataset.index);
+                const index2 = parseInt(cell2.dataset.index);
+                const row1 = Math.floor(index1 / cols);
+                const col1 = index1 % cols;
+                const row2 = Math.floor(index2 / cols);
+                const col2 = index2 % cols;
+                return Math.sqrt(Math.pow(row2 - row1, 2) + Math.pow(col2 - col1, 2));
+            }
+            
+            //function to update cell reactions
+            function updateCellReactions(activeCell, isClick = false){
+                //remove reaction from previous cells
+                lastReactedCells.forEach(cell =>{
+                    cell.style.transform = 'translate(0%, 0%)';
+                });
+                lastReactedCells.clear();
+
+                if (!activeCell) return;
+
+                const activeIndex = parseInt(activeCell.dataset.index);
+                const activeRow = Math.floor(activeIndex / cols);
+                const activeCol = activeIndex % cols;
+
+                //click reactions
+                const radius = isClick ? GRID_CONFIG.clickReactionRadius :GRID_CONFIG.reactionRadius;
+                const maxDistance = isClick ? GRID_CONFIG.clickMaxReactionDistance :GRID_CONFIG.maxReactionDistance;
+                const maxDisplacement = isClick ? GRID_CONFIG.clickMaxReactionDisplacement :GRID_CONFIG.maxReactionDisplacement;
+
+                //find cells to react
+                cellsArray.forEach(cell =>{
+                    if (cell !== activeCell){
+                        const distance = getCellDistance(cell, activeCell);
+                        if (distance < radius){
+                            const cellIndex = parseInt(cell.dataset.index);
+                            const cellRow = Math.floor(cellIndex / cols);
+                            const cellCol = cellIndex % cols;
+                            
+                            //calculate direction vector
+                            const dx = cellCol - activeCol;
+                            const dy = cellRow - activeRow;
+                            
+                            //normalize and scale by displacement
+                            const displacement = calculateDisplacement(distance, maxDistance, maxDisplacement);
+                            const angle = Math.atan2(dy, dx);
+                            const tx = Math.cos(angle) * displacement;
+                            const ty = Math.sin(angle) * displacement;
+                            
+                            cell.style.transform = `translate(${tx}px, ${ty}px)`;
+                            cell.classList.add('react');
+                            lastReactedCells.add(cell);
+                        }
+                    }
+                });
+            }
+            
+            //calculate displacement
+            function calculateDisplacement(distance, maxDistance = GRID_CONFIG.maxReactionDistance, maxDisplacement = GRID_CONFIG.maxReactionDisplacement){
+                if (distance > maxDistance) return 0;
+                const strength = 1 - (distance / maxDistance);
+                return strength * maxDisplacement;
+            }
+            
+            gridContainer.addEventListener('mousemove', function(e){
+                //if we don't have measurements yet, update them
+                if (!gridRect){
+                    updateGridMeasurements();
+                    return;
+                }
+                
+                const rect = grid.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                //calculate grid cell coordinates using actual measurements
+                const col = Math.floor(x / cellWidthWithBorder);
+                const row = Math.floor(y / cellHeightWithBorder);
+                
+                //only proceed if within valid grid bounds
+                if (col >= 0 && col < cols && row >= 0 && row < rows){
+                    //get index of cell
+                    const cellIndex = row * cols + col;
+                    
+                    //if valid index, update cursor content and info
+                    if (cellIndex >= 0 && cellIndex < cellsArray.length){
+                        const cell = cellsArray[cellIndex];
+                        
+                        //don't process if it's the same cell we're already on
+                        if (cell === lastActiveCell){
+                            return;
+                        }
+                        
+                        const char = cell.textContent;
+                        const charCode = cell.dataset.charCode;
+                        
+                        //update info text
+                        info.innerHTML = `U+${parseInt(charCode).toString(16).toUpperCase()}<br>${char}`;
+                        
+                        //deactivate the last active cell instantly 
+                        //(if there was one and it's not already deactivated)
+                        if (lastActiveCell && lastActiveCell !== cell){
+                            deactivateCell(lastActiveCell);
+                        }
+                        
+                        //make this cell active immediately
+                        cell.classList.add('active');
+                        //update cell reactions
+                        updateCellReactions(cell);
+                        
+                        //remember this cell was last active
+                        lastActiveCell = cell;
+                    }
+                }
+            });
+
+            //add characters to input display
+            gridContainer.addEventListener('mousedown', function(e){
+                if (lastActiveCell){
+                    lastActiveCell.classList.add('pressed');
+                    //trigger clicked reaction
+                    updateCellReactions(lastActiveCell, true);
+                }
+            });
+
+            gridContainer.addEventListener('mouseup', function(e){
+                if (lastActiveCell){
+                    lastActiveCell.classList.remove('pressed');
+                    const char = lastActiveCell.textContent.trim();
+                    editor.value += char;
+                    //reset
+                    updateCellReactions(lastActiveCell, false);
+                }
+            });
+
+            //handle window resize to update measurements
+            window.addEventListener('resize', updateGridMeasurements);
+
+            //drag
+            const editorContainer = document.getElementById('editor-container');
+            const dragHandle = document.querySelector('.drag-handle');
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            dragHandle.addEventListener('mousedown', function(e){
+                isDragging = true;
+                offsetX = e.clientX - editorContainer.getBoundingClientRect().left;
+                offsetY = e.clientY - editorContainer.getBoundingClientRect().top;
+            });
+
+            document.addEventListener('mousemove', function(e){
+                if(isDragging){
+                    const x = e.clientX - offsetX;
+                    const y = e.clientY - offsetY;
+                    editorContainer.style.left = x + 'px';
+                    editorContainer.style.top = y + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', function(){
+                isDragging = false;
+            });
+
+            //set initial position
+            editorContainer.style.left = '20px';
+            editorContainer.style.top = '20px';
+
+            //copy functionality
+            const copyButton = document.querySelector('.copy-button');
+            copyButton.addEventListener('click', function(){
+                navigator.clipboard.writeText(editor.value).then(() => {
+                    // Visual feedback
+                    copyButton.textContent = 'copied!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'copy';
+                    }, 1000);
+                });
+            });
+
+            //font size control
+            const sizeSlider = document.querySelector('.size-slider');
+            sizeSlider.addEventListener('input', function(){
+                editor.style.fontSize = this.value + 'px';
+            });
+
+            const refreshButton = document.getElementById('refreshButton');
+
+            refreshButton.addEventListener('click', function(){
+                //fade out cells randomly
+                cellsArray.forEach(cell => {
+                    const delay = Math.random() * 500;
+                    setTimeout(() => {
+                        cell.classList.remove('fade-in');
+                        cell.classList.add('fade-out');
+                    }, delay);
+                });
+                
+                //wait for fade out to complete
+                setTimeout(() => {
+                    //clear existing cells
+                    grid.innerHTML = '';
+                    cellsArray = [];
+                    
+                    //reshuffle code points
+                    shuffleArray(selectedCodePoints);
+                    
+                    //regenerate cells with new random characters
+                    for (let i = 0; i < totalCells; i++){
+                        try{
+                            const charCode = selectedCodePoints[i];
+                            const char = String.fromCodePoint(charCode);
+                            
+                            const cell = document.createElement('div');
+                            cell.className = 'cell visible fade-out';
+                            cell.textContent = char + "\uFE0E";//prevent emoji rendering
+                            cell.dataset.charCode = charCode;
+                            cell.dataset.index = i;
+                            
+                            grid.appendChild(cell);
+                            cellsArray.push(cell);
+                            
+                            //fade in with random delay
+                            const delay = Math.random() * 500;
+                            setTimeout(() => {
+                                cell.classList.remove('fade-out');
+                                cell.classList.add('fade-in');
+                            }, delay);
+                        } catch (e){
+                            //empty cell for invalid code points
+                            const cell = document.createElement('div');
+                            cell.className = 'cell visible fade-out';
+                            cell.textContent = ' ';
+                            cell.dataset.charCode = '0020';//space
+                            cell.dataset.index = i;
+                            cell.style.backgroundColor = 'red';
+                            
+                            grid.appendChild(cell);
+                            cellsArray.push(cell);
+                            
+                            //fade in with random delay
+                            const delay = Math.random() * 500;
+                            setTimeout(() => {
+                                cell.classList.remove('fade-out');
+                                cell.classList.add('fade-in');
+                            }, delay);
+                        }
+                    }
+                    
+                    updateGridMeasurements();
+                }, 600);
+            });
+        });
+    </script>
+</body>
+</html>
