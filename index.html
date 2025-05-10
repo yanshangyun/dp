@@ -542,6 +542,13 @@
                 arrangeItemsInCircle(0); // Reset to default position on resize
             });
         });
+
+        const correctPassword = "letmein";
+        const userInput = prompt("Password:");
+
+        if (userInput !== correctPassword) {
+            document.body.innerHTML = "<h1>You do not have permission to view this page.</h1>";
+        }
     </script>
 </body>
 </html>
