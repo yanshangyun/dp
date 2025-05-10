@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mapping</title>
+    <style>
+        *{
+            box-sizing:border-box;
+        }
+
+        body{
+            width:100vw;
+            height:100vh;
+            margin:20px auto;
+            padding:20px;
+            overflow:hidden;
+            background-color:rgb(246, 246, 246);
+        }
+
+        ::selection{
+            background-color:white;
+            mix-blend-mode:difference;
+        }
+        
+        .container{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            height:100%;
+            width:100%;
+        }
+
+        #inputText{
+            position:fixed;
+            width:60%;
+            bottom:20px;
+            text-align:center;
+            font-family:arial;
+            resize:none;
+            border:none;
+            outline:none;
+            font-size:20px;
+            color:rgb(211, 211, 211);
+            height:auto;
+            overflow:hidden;
+        }
+
+        #outputText{
+            font-size:80px;
+            line-height:90px;
+            text-align:center;
+            color:rgb(211, 211, 211);
+            animation:blink 5s infinite;
+            text-shadow:0 0 15px rgba(0, 0, 0, 0.185);
+        }
+    </style>
+</head>
+<body>    
+    <div class="container">
+        <div id="outputText"></div>
+        <div id="inputText" contenteditable="true"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+            
+            let uppercase ={};
+            let lowercase ={};
+            
+            //focus on input text
+            window.onload = function(){
+                inputText.focus();
+            }
+            
+            const styles = [
+                "Mathematical Bold", 
+                "Mathematical Italic", 
+                "Mathematical Bold Italic", 
+                "Mathematical Script", 
+                "Mathematical Bold Script", 
+                "Mathematical Fraktur", 
+                "Mathematical Bold Fraktur", 
+                "Mathematical Double-Struck", 
+                "Mathematical Sans-Serif", 
+                "Mathematical Sans-Serif Bold", 
+                "Mathematical Sans-Serif Italic", 
+                "Mathematical Sans-Serif Bold Italic", 
+                "Mathematical Monospace",
+                "Fullwidth",
+                "Circled",
+                "Parenthesized",
+                "Squared",
+                // "Regional Indicator",
+                "Superscript",
+                "Subscript",
+                "Small Caps"
+            ];
+            
+            //load csv data
+            async function loadAllMappings(){
+                const uppercaseResponse = await fetch('uppercase-unicode-variants.csv');
+                const uppercaseCSV = await uppercaseResponse.text();
+                
+                const lowercaseResponse = await fetch('lowercase-unicode-variants.csv');
+                const lowercaseCSV = await lowercaseResponse.text();
+                
+                //parse csv data
+                const uppercaseData = Papa.parse(uppercaseCSV,{
+                    header:true,
+                    skipEmptyLines:true
+                }).data;
+                
+                const lowercaseData = Papa.parse(lowercaseCSV,{
+                    header:true,
+                    skipEmptyLines:true
+                }).data;
+                
+                //mappings for all styles
+                styles.forEach(style =>{
+                    if (!uppercase[style]){
+                        uppercase[style] ={};
+                    }
+                    
+                    if (!lowercase[style]){
+                        lowercase[style] ={};
+                    }
+                });
+                
+                //uppercase letters
+                uppercaseData.forEach(row =>{
+                    const letter = row.Letter;
+                    
+                    styles.forEach(style =>{
+                        const variant = row[style];
+                        if (variant && variant.trim() !== ''){
+                            uppercase[style][letter] = variant;
+                        } else{
+                            uppercase[style][letter] = letter;
+                        }
+                    });
+                });
+                
+                //lowercase letters
+                lowercaseData.forEach(row =>{
+                    const letter = row.Letter;
+                    
+                    styles.forEach(style =>{
+                        const variant = row[style];
+                        if (variant && variant.trim() !== ''){
+                            lowercase[style][letter] = variant;
+                        } else{
+                            lowercase[style][letter] = letter;
+                        }
+                    });
+                });
+                
+                //if input already has text, convert it
+                if (inputText.value){
+                    convertText();
+                }
+            }
+            
+            //randomly select a style
+            function selectRandomStyle(){
+                const randomIndex = Math.floor(Math.random() * styles.length);
+                return styles[randomIndex];
+            }
+            
+            //convert input text to random style
+            function convertText(){
+                const text = inputText.innerText; // Get text from contenteditable div
+                const lines = text.split('\n');
+                
+                const convertedLines = lines.map(line => {
+                    return line.split('').map(char => {
+                        const randomStyle = selectRandomStyle();
+                        
+                        if (uppercase[randomStyle] && uppercase[randomStyle][char]) {
+                            return uppercase[randomStyle][char];
+                        } else if (lowercase[randomStyle] && lowercase[randomStyle][char]) {
+                            return lowercase[randomStyle][char];
+                        } else {
+                            return char; // keep non-alphabetic characters as-is
+                        }
+                    }).join('');
+                });
+                
+                //join
+                const converted = convertedLines.join('\n');
+                
+                outputText.innerHTML = converted.replace(/\n/g, '<br>');
+            }
+            
+            //event listener for input changes
+            inputText.addEventListener('input', convertText);
+            
+            //initialize
+            loadAllMappings();
+        });
+    </script>
+</body>
+</html>

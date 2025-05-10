@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hyperhyperlink</title>
+    <style>
+        body{
+            max-width:800px;
+            margin:20px auto;
+            padding:20px;
+        }
+        #input{
+            position:absolute;
+            width:1px;
+            height:1px;
+            opacity:0;
+        }
+        #output{
+            border:1px solid #ccc;
+            padding:15px;
+            min-height:150px;
+            margin-top:20px;
+            line-height:1.5;
+        }
+        h1{
+            color:#333;
+        }
+        p{
+            margin-bottom:15px;
+        }
+        a{
+            color:blue;
+        }
+    </style>
+</head>
+<body>   
+    <textarea id="input" autocomplete="false"></textarea>
+    <div id="output" onclick="focusInput()">Make hyperlinks</div>
+
+    <script>
+        const inputArea = document.getElementById('input');
+        const outputArea = document.getElementById('output');
+        
+        //auto focus on text area
+        window.onload = function() {
+            inputArea.focus();
+        };
+        
+        //function tofocus on text area
+        function focusInput() {
+            inputArea.focus();
+        }
+        
+        //input
+        inputArea.addEventListener('input', function(e) {
+            const text = this.value;
+            const words = text.split(' ');
+            
+            let outputHTML = '';
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i].trim();
+                if (word) {
+                    outputHTML += `<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(word)}" target="_blank">${word}</a> `;
+                }
+            }
+            
+            outputArea.innerHTML = outputHTML || 'Start typing...';
+        });
+        
+        //input stays focused
+        document.addEventListener('click', function() {
+            setTimeout(function() {
+                inputArea.focus();
+            }, 10);
+        });
+        
+        //prevent tab key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
+    </script>
+</body>
+</html>

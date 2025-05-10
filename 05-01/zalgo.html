@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zalgo Text Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *{
+            box-sizing:border-box;
+        }
+
+        body{
+            width:100vw;
+            height:100vh;
+            margin:20px auto;
+            padding:20px;
+            overflow:hidden;
+            background-color:rgb(246, 246, 246);
+            font-family:'Noto Sans', sans-serif;
+        }
+
+        ::selection{
+            background-color:rgba(0, 0, 0, 0.071);
+        }
+        
+        .container{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            height:100%;
+            width:100%;
+        }
+
+        #inputText{
+            position:fixed;
+            width:60%;
+            bottom:20px;
+            text-align:center;
+            font-family:arial;
+            resize:none;
+            border:none;
+            outline:none;
+            font-size:20px;
+            color:rgb(100, 100, 100);
+            text-shadow:0 0 10px rgba(0, 0, 0, 0.185);
+            height:auto;
+            overflow:hidden;
+        }
+
+        #outputText{
+            font-size:100px;
+            text-align:center;
+            color:black;
+            line-height:100px;
+        }
+    </style>
+</head>
+<body>    
+    <div class="container">
+        <div id="outputText"></div>
+        <div id="inputText" contenteditable="true"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+            
+            // Store zalgo character sets - using more widely supported characters
+            const zalgoUp = [
+                '\u0300', '\u0301', '\u0302', '\u0303', '\u0304', '\u0305', '\u0306', '\u0307',
+                '\u0308', '\u0309', '\u030A', '\u030B', '\u030C', '\u030D', '\u030E', '\u030F'
+            ];
+            
+            const zalgoMid = [
+                '\u0315', '\u031B', '\u0321', '\u0322', '\u0327', '\u0328', '\u0334', '\u0335',
+                '\u0336', '\u0337', '\u0338'
+            ];
+            
+            const zalgoDown = [
+                '\u0316', '\u0317', '\u0318', '\u0319', '\u031C', '\u031D', '\u031E', '\u031F',
+                '\u0320', '\u0324', '\u0325', '\u0326', '\u0329', '\u032A', '\u032B', '\u032C'
+            ];
+            
+            // Focus on input text
+            window.onload = function(){
+                inputText.focus();
+            }
+            
+            // Store character data (both times and applied zalgo effects)
+            let charData = {};
+            
+            // Function to add zalgo diacritics to a character
+            function zalgoify(char, intensity, existingDiacritics = '') {
+                if (!char || char === ' ' || char === '\n') {
+                    return { result: char, diacritics: '' };
+                }
+                
+                let newDiacritics = '';
+                
+                // Limit the total number of combining marks to avoid browser rendering issues
+                const maxMarks = 30;
+                const currentCount = existingDiacritics.length;
+                
+                // If we're already at our limit, don't add more
+                if (currentCount >= maxMarks) {
+                    return { result: char + existingDiacritics, diacritics: existingDiacritics };
+                }
+                
+                // Calculate how many more marks we can safely add
+                const availableSlots = maxMarks - currentCount;
+                const marksToAdd = Math.min(
+                    Math.ceil(intensity * 3), // Normal calculation
+                    availableSlots // But never exceed our limit
+                );
+                
+                // Evenly distribute new marks between the three positions
+                const upMarks = Math.ceil(marksToAdd / 3);
+                const midMarks = Math.floor(marksToAdd / 3);
+                const downMarks = Math.floor(marksToAdd / 3);
+                
+                // Add marks above
+                for (let i = 0; i < upMarks; i++) {
+                    const mark = zalgoUp[Math.floor(Math.random() * zalgoUp.length)];
+                    newDiacritics += mark;
+                }
+                
+                // Add marks in the middle
+                for (let i = 0; i < midMarks; i++) {
+                    const mark = zalgoMid[Math.floor(Math.random() * zalgoMid.length)];
+                    newDiacritics += mark;
+                }
+                
+                // Add marks below
+                for (let i = 0; i < downMarks; i++) {
+                    const mark = zalgoDown[Math.floor(Math.random() * zalgoDown.length)];
+                    newDiacritics += mark;
+                }
+                
+                // Combine with existing diacritics
+                const allDiacritics = existingDiacritics + newDiacritics;
+                
+                return { result: char + allDiacritics, diacritics: allDiacritics };
+            }
+            
+            // Function to update zalgo effect over time
+            function updateZalgoText() {
+                convertText(true);
+            }
+            
+            // Convert input text and apply zalgo effect
+            function convertText(updateZalgo = false){
+                const text = inputText.innerText; // Get text from contenteditable div
+                const now = Date.now();
+                const lines = text.split('\n');
+                
+                // Create a new charData object to track only the characters that still exist
+                let newCharData = {};
+                
+                // Process each line separately
+                const convertedLines = lines.map((line, lineIndex) => {
+                    return line.split('').map((char, charIndex) => {
+                        // Generate a unique key for this character position
+                        const absoluteIndex = lines.slice(0, lineIndex).join('').length + charIndex;
+                        const charKey = `pos-${absoluteIndex}`;
+                        
+                        // Initialize if this is a new character position
+                        if (!charData[charKey]) {
+                            charData[charKey] = {
+                                time: now,
+                                char: char,
+                                diacritics: ''
+                            };
+                        }
+                        
+                        // If character at this position changed, update it but keep the time
+                        if (charData[charKey].char !== char) {
+                            charData[charKey].char = char;
+                            charData[charKey].diacritics = ''; // Reset diacritics for new character
+                        }
+                        
+                        // Calculate how long this character has been present
+                        const charAge = (now - charData[charKey].time) / 1000; // in seconds
+                        
+                        // Only add new diacritics if we're updating (periodic timer)
+                        if (updateZalgo) {
+                            // Add 1-3 new diacritics on each update cycle
+                            const zalgoResult = zalgoify(char, 1, charData[charKey].diacritics);
+                            charData[charKey].diacritics = zalgoResult.diacritics;
+                        }
+                        
+                        // Save this character's data in our new tracking object
+                        newCharData[charKey] = charData[charKey];
+                        
+                        // Return character with all its accumulated diacritics
+                        return char + charData[charKey].diacritics;
+                    }).join('');
+                });
+                
+                // Replace the old charData with our filtered version
+                charData = newCharData;
+                
+                // Join the lines back with line breaks
+                const converted = convertedLines.join('\n');
+                
+                // Set the output text content
+                outputText.innerHTML = converted.replace(/\n/g, '<br>');
+            }
+            
+            // Event listener for input changes
+            inputText.addEventListener('input', function() {
+                // Instead of resetting all character times, we'll keep existing ones
+                // and only create new entries for new characters in convertText()
+                convertText();
+            });
+            
+            // Update zalgo effect every second
+            setInterval(updateZalgoText, 500);
+        });
+    </script>
+</body>
+</html>

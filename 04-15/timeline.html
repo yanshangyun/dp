@@ -4,26 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>timeline</title>
-    <style>
-        /* @font-face {
-            font-family:'pantasia';
-            src:url(/pantasia.otf);
-        }*/
-        
+    <style>        
         body{
             font-family:Arial, Helvetica, sans-serif;
             margin:0;
             padding:0;
             overflow:hidden;
-            font-size:10px;
+            font-size:12px;
+            width:100vw;
+            height:100vh;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+        }
+
+        :root{
+            --indicator-position:0%;
+            --timeline-height:100px;
         }
 
         .container{
             display:flex;
             flex-direction:column;
-            height:80vh;
+            justify-content:center;
+            height:100vh;
             padding:20px;
             box-sizing:border-box;
+            width:80vw;
+            min-width:800px;
+            max-width:1600px;
         }
 
         .input-area{
@@ -32,462 +42,538 @@
             pointer-events:none;
         }
 
-        .timeline-container{
-            flex-grow:1;
-            position:relative;
-            background-color:white;
-            border:solid 0.5px black;
-            overflow:hidden;
-            cursor:text;
+        @keyframes timelineShadow{
+            0%{
+                box-shadow:0 0 0 rgba(0, 0, 0, 0);
+            }
+            100%{
+                box-shadow:0 5px 10px rgba(0, 0, 0, 0.100);
+            }
         }
 
-        .timeline{
-            position:absolute;
-            height:1px;
-            background-color:#ddd;
-            top:50%;
-            width:100%;
-            transform:translateY(-50%);
+        @keyframes transcriptShadow{
+            0%{
+                box-shadow:inset 0 0 0 rgba(0, 0, 0, 0);
+            }
+            100%{
+                box-shadow:inset 0 2px 5px rgba(0, 0, 0, 0.100);
+            }
         }
-        
+
+        @keyframes wipe{
+            0%{
+                left:0;
+            }
+            100%{
+                left:var(--indicator-position);
+            }
+        }
+
+        .timeline-container{
+            position:relative;
+            background-color:white;
+            overflow:hidden;
+            cursor:text;
+            height:var(--timeline-height);
+            border:solid 0.5px black;
+            animation:timelineShadow 1s cubic-bezier(.78,0,.2,1) forwards;
+            animation-delay:3s;
+            margin-bottom:20px;
+            transition:height 1s cubic-bezier(.78,0,.2,1);
+            /* border-radius:5px; */
+        }
+
         .time-indicator{
             position:absolute;
             height:100%;
             width:0.5px;
             background-color:black;
             top:0;
-            left:80%;
             z-index:10;
+            animation:wipe 2s cubic-bezier(.78,0,.2,1) forwards;
+            animation-delay:0.5s;
         }
 
         .time-label{
             position:absolute;
             top:10px;
-            left:calc(80% + 10px);
             color:#666;
+            transform:translateX(10px);
+            animation:wipe 2s cubic-bezier(.78,0,.2,1) forwards;
+            animation-delay:0.5s;
         }
 
         .character{
             position:absolute;
-            font-size:10px;
+            font-size:12px;
             transform:translateY(-50%);
-            transition:left 0.5s linear;
-            animation:appear 0.5s linear;
+            transition:top 1s cubic-bezier(.78,0,.2,1);
+            animation:appear 0.5s cubic-bezier(.25,0,.2,1) forwards;
         }
 
         @keyframes appear{
             0%{
                 opacity:0%;
             }
-            20%{
-                opacity:100%;
-            }
             100%{
+                opacity:100%;
             }
         }
         
         .tick{
             position:absolute;
-            height:10px;
+            height:100%;
             width:1px;
-            background-color:#aaa;
-            top:0%;
+            background-color:rgba(0, 0, 0, 0.100);
+            bottom:0%;
             z-index:5;
-        }
-        
-        .tick .major{
-            height:16px;
-            background-color:#888;
         }
         
         .debug-panel{
             position:fixed;
             bottom:10px;
             right:10px;
-            background-color:white;
-            color:black;
-            padding:10px;
-            font-family:monospace;
-            font-size:8px;
-            z-index:1000;
-            max-width:300px;
-            max-height:200px;
+        }
+
+        .clear-button{
+            background-color:#f4f4f4;
+            border:solid 1px #ddd;
+        }
+
+        @keyframes open{
+            0%{
+                height:0;
+                padding:0px;
+                background-color:transparent;
+                border:solid 0px #ddd;
+            }
+            100%{
+                height:40vh;
+                padding:10px;
+                background-color:#f9f9f9;
+                border:solid 0.5px #ddd;
+            }
+        }
+
+        .transcript-container{
+            position:relative;
             overflow:auto;
-            border:0.5px black solid;
+            white-space:pre-wrap;
+            flex-grow:0;
+            height:0;
+            word-break:break-all;
+            margin-bottom:10px;
+            font-size:12px;
+            font-family:monospace;
+            animation:open 1s cubic-bezier(.78,0,.2,1) forwards, transcriptShadow 1s cubic-bezier(.78,0,.2,1) forwards;
+            animation-delay:3s;
+            /* border-radius:5px; */
+        }
+
+        .transcript-line{
+            margin-bottom:5px;
+            min-height:16px;
+            line-height:1.5;
+            word-wrap:break-word;
+        }
+
+        .user-count{
+            color:#999;
+            font-style:italic;
         }
     </style>
+    <link rel="stylesheet" href="../style.css">
 </head>
 <body>
+    <a href="../index.html" id="backButton">← Back</a>
     <div class="container">
         <div class="input-area">
             <input type="text" id="typing-input" autocomplete="off">
         </div>
+        <div class="transcript-container" id="transcript-area"></div>
         <div class="timeline-container">
-            <div class="timeline"></div>
             <div class="time-indicator"></div>
             <div class="time-label" id="current-time"></div>
         </div>
     </div>
-    
-    <!--debug pannel-->
-    <div class="debug-panel" id="debug-panel">
+    <div class="debug-panel">
+        <button class="clear-button" id="clear-transcript">Clear Transcript</button>
         <div>Active Users: <span id="active-users-count">0</span></div>
     </div>
 
     <script type="module">
-        //import
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, update, onDisconnect, onChildAdded, serverTimestamp, query, orderByChild, startAfter, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        import{ initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import{ getDatabase, ref, set, push, onValue, onDisconnect, onChildAdded, remove, query, orderByChild } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        //firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
-            authDomain: "chat-f7267.firebaseapp.com",
-            databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
-            projectId: "chat-f7267",
-            storageBucket: "chat-f7267.firebasestorage.app",
-            messagingSenderId: "393364272511",
-            appId: "1:393364272511:web:7d40dfd804011f210b964a",
-            measurementId: "G-X3PF8YJYT8"
-        };
-
-        //initialize
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        //debug elements
-        const debugPanel = document.getElementById('debug-panel');
-        const activeUsersCount = document.getElementById('active-users-count');
-        
-        //start time on page load
-        const startTime = new Date();
-        
-        const input = document.getElementById('typing-input');
-        const timelineContainer = document.querySelector('.timeline-container');
-        const timeLabel = document.getElementById('current-time');
-        
-        //setup
-        const BASE_PATH = 'timeline';
-
-        const indicatorPosition = 80; //% from left
-        const scrollSpeed = 100; //pixels per second
-        let lastTickTime = 0;
-        let tickCount = 0;
-        let userId = null;
-        let userCharacters = {}; //store characters per user
-        let activeUsers = []; //active users list
-        let timelines = {}; //store timeline elements per user
-        let ticks = []; //store all ticks
-        
-        //generate random user id
-        function generateUserId() {
-            if (localStorage.getItem('timelineUserId')) {
-                const id = localStorage.getItem('timelineUserId');
-                return id;
-            }
-            
-            const id = Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('timelineUserId', id);
-            return id;
-        }
-        
-        //initialize user and register with firebase
-        function initializeUser() {
-            userId = generateUserId();
-            
-            //register user in firebase
-            const userRef = ref(db, `${BASE_PATH}/users/${userId}`);
-            set(userRef, { connected: true });
-            
-            //remove user when disconnected
-            onDisconnect(userRef).remove();
-            
-            //initialize user's character array
-            userCharacters[userId] = [];
-        }
-        
-        //listen for active users changes
-        function listenForUsers() {
-            const usersRef = ref(db, `${BASE_PATH}/users`);
-            onValue(usersRef, (snapshot) => {
-                const users = snapshot.val() || {};
-                activeUsers = Object.keys(users);
-                activeUsersCount.textContent = activeUsers.length;
-                
-                //update ui for all users
-                updateUserLayout();
-            });
-        }
-        
-        //update the layout based on active users
-        function updateUserLayout() {
-            //calculate positions based on user count
-            const userCount = activeUsers.length;
-            timelines = {};
-            
-            if (userCount === 0) {
-                timelines[userId] = {
-                    verticalPosition: 50
-                };
-                return;
-            }
-            
-            //assign positions to users
-            activeUsers.forEach((id, index) => {
-                //calculate vertical position
-                const segmentHeight = 100 / userCount;
-                let verticalPosition = (index + 0.5) * segmentHeight;
-                
-                //store reference
-                timelines[id] = {
-                    verticalPosition: verticalPosition
-                };
-                
-                //reposition existing characters for this user
-                if (userCharacters[id]) {
-                    userCharacters[id].forEach(char => {
-                        char.element.style.top = `${verticalPosition}%`;
-                    });
-                }
-            });
-        }
-        
-        //time label
-        function updateTimeLabel() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: true });
-            timeLabel.textContent = timeString;
-        }
-        
-        //add a tick to the center timeline
-        function addTickToTimeline(timestamp, isMajor = false) {
-            const tickElement = document.createElement('div');
-            tickElement.className = isMajor ? 'tick major' : 'tick';
-            
-            //calculate initial position (at the time indicator)
-            const initialLeft = `${indicatorPosition}%`;
-            
-            //store tick data
-            ticks.push({
-                element: tickElement,
-                timestamp: timestamp,
-                isMajor: isMajor
-            });
-            
-            //set positions
-            tickElement.style.left = initialLeft;
-            
-            //add to the container
-            timelineContainer.appendChild(tickElement);
-        }
-        
-        //add a character to the timeline
-        function addCharacterToTimeline(char, timestamp, uid, isLocal = true, firebaseKey = null) {
-            const verticalPosition = timelines[uid].verticalPosition;
-            
-            const charElement = document.createElement('div');
-            charElement.className = 'character';
-            charElement.textContent = char;
-            
-            const initialLeft = `${indicatorPosition}%`;
-            
-            //initialize user's character array if needed
-            if (!userCharacters[uid]) {
-                userCharacters[uid] = [];
-            }
-            
-            //store character data
-            userCharacters[uid].push({
-                element: charElement,
-                timestamp: timestamp,
-                firebaseKey: firebaseKey // Store the key for later deletion
-            });
-            
-            //set positions
-            charElement.style.left = initialLeft;
-            charElement.style.top = `${verticalPosition}%`;
-            
-            //add to the container
-            timelineContainer.appendChild(charElement);
-            
-            //if local character, send to firebase
-            if (isLocal) {
-                const charactersRef = ref(db, `${BASE_PATH}/characters`);
-                const newCharRef = push(charactersRef, {
-                    char: char,
-                    timestamp: timestamp,
-                    userId: uid
-                });
-                
-                // Store the generated key
-                const index = userCharacters[uid].length - 1;
-                userCharacters[uid][index].firebaseKey = newCharRef.key;
-            }
-        }
-        
-        //listen for new characters from all users
-        function listenForCharacters() {
-            //listen for recent characters
-            const charactersRef = ref(db, `${BASE_PATH}/characters`);
-            const recentCharactersQuery = query(
-                charactersRef,
-                orderByChild('timestamp'),
-                startAfter(Date.now() - 10000)
-            );
-            
-            onChildAdded(recentCharactersQuery, (snapshot) => {
-                const charData = snapshot.val();
-                
-                //avoid duplicating local characters
-                if (charData && charData.userId && charData.userId !== userId) {
-                    addCharacterToTimeline(
-                        charData.char, 
-                        charData.timestamp, 
-                        charData.userId, 
-                        false, //not a local character
-                        snapshot.key // Store the Firebase key
-                    );
-                }
-            });
-        }
-        
-        //handle input
-        input.addEventListener('input', (e) => {
-            //last character typed
-            const lastChar = e.target.value.slice(-1);
-            if (lastChar) {
-                const now = new Date().getTime();
-                addCharacterToTimeline(lastChar, now, userId, true);
-            }
-            
-            //clear the input after processing
-            e.target.value = '';
+        const app = initializeApp({
+            apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain:"chat-f7267.firebaseapp.com",
+            databaseURL:"https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId:"chat-f7267",
+            storageBucket:"chat-f7267.firebasestorage.app",
+            messagingSenderId:"393364272511",
+            appId:"1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId:"G-X3PF8YJYT8"
         });
         
-        // Helper to calculate percent to move based on time difference
-        function calculatePercentToMove(timeDiffMs) {
-            const pixelsToMove = (timeDiffMs / 1000) * scrollSpeed;
-            return (pixelsToMove / timelineContainer.offsetWidth) * 100;
-        }
-
-        //generate ticks
-        function generateTicks() {
-            //only generate ticks if there are active users
-            if (Object.keys(timelines).length === 0) return;
-            
-            const now = new Date();
-            const currentTime = now.getTime();
-            
-            //add ticks every 100ms
-            if (currentTime - lastTickTime >= 100) {
-                const isMajor = tickCount % 10 === 0; //make every 10th tick (1 second) major
-                addTickToTimeline(now, isMajor);
-                lastTickTime = currentTime;
-                tickCount++;
-            }
+        const db = getDatabase(app);
+        const BASE_PATH = 'timeline';
+        
+        //add server time offset
+        let serverTimeOffset = 0;
+        
+        //get server time offset
+        const connectedRef = ref(db, '.info/serverTimeOffset');
+        onValue(connectedRef, (snap) => {
+            serverTimeOffset = snap.val() || 0;
+        });
+        
+        //use this function whenever you need a timestamp
+        function getServerTime() {
+            return Date.now() + serverTimeOffset;
         }
         
-        //update character and tick positions
-        function updatePositions() {
-            const now = new Date();
+        //use this to ensure consistent timing for animations
+        function getAnimationTime() {
+            //for consistent animation timing across platforms
+            return performance.now ? performance.now() : Date.now();
+        }
+        
+        const state ={
+            userId:'user_' + Math.random().toString(36).substring(2, 15),
+            startTime:new Date(),
+            indicatorPosition:90,
+            scrollSpeed:100,
+            lastTickTime:0,
+            tickCount:0,
+            activeUsers:[],
+            timelines:{},
+            timelineCharacters:[],
+            ticks:[],
+            transcriptEntries:[],
+            baseTimelineHeight:parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-height')),
+            maxTimelineHeight:1000,
+            heightPerUser:100
+        };
+        
+        //DOM elements
+        const elements ={
+            input:document.getElementById('typing-input'),
+            timelineContainer:document.querySelector('.timeline-container'),
+            timeLabel:document.getElementById('current-time'),
+            transcriptArea:document.getElementById('transcript-area'),
+            activeUsersCount:document.getElementById('active-users-count'),
+            clearButton:document.getElementById('clear-transcript')
+        };
+        
+        document.documentElement.style.setProperty('--indicator-position', `${state.indicatorPosition}%`);
+        
+        //initialize user
+        function initializeUser(){
+            const userRef = ref(db, `${BASE_PATH}/users/${state.userId}`);
+            set(userRef,{ connected:true });
+            onDisconnect(userRef).remove();
             
-            //update all users' characters
-            for (const uid in userCharacters) {
-                const characters = userCharacters[uid];
+            //listen for users
+            onValue(ref(db, `${BASE_PATH}/users`), (snapshot) =>{
+                const users = snapshot.val() ||{};
+                const newActiveUsers = Object.keys(users);
+                const previousUserCount = state.activeUsers.length;
+                state.activeUsers = newActiveUsers;
+                elements.activeUsersCount.textContent = state.activeUsers.length;
                 
-                //use for loop with index to safely remove items
-                for (let i = characters.length - 1; i >= 0; i--) {
-                    const char = characters[i];
+                //update timeline height based on user count
+                updateTimelineHeight(state.activeUsers.length);
+                updateUserLayout();
+            });
+            
+            //listen for characters from other users
+            onChildAdded(ref(db, `${BASE_PATH}/characters`), (snapshot) =>{
+                const data = snapshot.val();
+                if (data && data.userId !== state.userId){
+                    createTimelineCharacter(data.char, data.timestamp, data.userId, snapshot.key);
+                }
+            });
+            
+            //listen for transcript changes
+            const transcriptRef = query(ref(db, `${BASE_PATH}/transcript`), orderByChild('timestamp'));
+            onValue(transcriptRef, (snapshot) =>{
+                const transcriptData = snapshot.val() ||{};
+                const entries = Object.entries(transcriptData)
+                    .map(([key, value]) => ({ key, ...value }))
+                    .sort((a, b) => a.timestamp - b.timestamp);
+                
+                //clear and rebuild transcript
+                elements.transcriptArea.innerHTML = '';
+                
+                let currentLine = null;
+                let lastUserId = null;
+                let lastTimestamp = null;
+                
+                entries.forEach(entry =>{
+                    //create new line if needed
+                    if (entry.type === 'userCount' || !currentLine || entry.userId !== lastUserId){
+                        currentLine = document.createElement('div');
+                        currentLine.className = 'transcript-line';
+                        elements.transcriptArea.appendChild(currentLine);
+                    }
                     
-                    //calculate time difference in milliseconds
-                    const timeDiff = now - char.timestamp;
-                    
-                    //new position based on time difference
-                    const percentToMove = calculatePercentToMove(timeDiff);
-                    
-                    //new position
-                    const newPosition = indicatorPosition - percentToMove;
-                    
-                    //update position
-                    char.element.style.left = `${newPosition}%`;
-                    
-                    //remove characters off screen
-                    if (newPosition < -5) {
-                        if (char.element.parentNode) {
-                            char.element.parentNode.removeChild(char.element);
+                    //add spacing
+                    if (lastTimestamp && entry.type !== 'userCount'){
+                        const timeDiff = entry.timestamp - lastTimestamp;
+                        const spaces = Math.floor(Math.abs(timeDiff) / 100);
+                        if (spaces > 0){
+                            currentLine.appendChild(document.createTextNode(' '.repeat(spaces)));
                         }
-                        
-                        // Delete from Firebase if we have a key
-                        if (char.firebaseKey) {
-                            const charRef = ref(db, `${BASE_PATH}/characters/${char.firebaseKey}`);
-                            remove(charRef).catch(error => {
-                                console.error("Error removing character from Firebase:", error);
-                            });
-                        }
-                        
-                        // Remove from local array
-                        characters.splice(i, 1);
+                    }
+                    
+                    //add content
+                    if (entry.type === 'userCount'){
+                        const span = document.createElement('span');
+                        span.className = 'user-count';
+                        span.textContent = entry.char;
+                        currentLine.appendChild(span);
+                    }else{
+                        currentLine.appendChild(document.createTextNode(entry.char));
+                    }
+                    
+                    lastUserId = entry.userId;
+                    lastTimestamp = entry.timestamp;
+                });
+                
+                //auto-scroll
+                elements.transcriptArea.scrollTop = elements.transcriptArea.scrollHeight;
+            });
+        }
+        
+        //update timeline height based on user count
+        function updateTimelineHeight(userCount) {
+            let newHeight = state.baseTimelineHeight;
+            
+            if (userCount > 1) {
+                //add height for each additional user
+                newHeight += (userCount - 1) * state.heightPerUser;
+            }
+            
+            //cap at maximum height
+            newHeight = Math.min(newHeight, state.maxTimelineHeight);
+            
+            //update the CSS variable - the transition will happen automatically
+            document.documentElement.style.setProperty('--timeline-height', `${newHeight}px`);
+        }
+        
+        //update user layout
+        function updateUserLayout(){
+            state.timelines ={};
+            const userCount = state.activeUsers.length || 1;
+            
+            state.activeUsers.forEach((uid, index) =>{
+                const verticalPosition = (index + 0.5) * (100 / userCount);
+                state.timelines[uid] ={ verticalPosition };
+                
+                //update existing characters
+                state.timelineCharacters.forEach(char =>{
+                    if (char.userId === uid){
+                        char.element.style.top = `${verticalPosition}%`;
+                    }
+                });
+            });
+        }
+        
+        //create timeline character
+        function createTimelineCharacter(char, timestamp, userId, firebaseKey = null){
+            const element = document.createElement('div');
+            element.className = 'character';
+            element.textContent = char;
+            
+            const verticalPosition = state.timelines[userId]?.verticalPosition || 50;
+            element.style.top = `${verticalPosition}%`;
+            element.style.left = `${state.indicatorPosition}%`;
+            
+            elements.timelineContainer.appendChild(element);
+            
+            const charData ={
+                element,
+                timestamp,
+                character:char,
+                userId,
+                hasReachedEnd:false,
+                firebaseKey:firebaseKey
+            };
+            
+            state.timelineCharacters.push(charData);
+            
+            return charData;
+        }
+        
+        //create tick
+        function createTick(timestamp){
+            const element = document.createElement('div');
+            element.className = `tick`;
+            element.style.left = `${state.indicatorPosition}%`;
+            
+            elements.timelineContainer.appendChild(element);
+            
+            state.ticks.push({ element, timestamp });
+        }
+        
+        //update character positions
+        function updatePositions(){
+            const now = getServerTime();
+            
+            //create ticks if needed inside the update function
+            if (now - state.startTime.getTime() > 3000 && now - state.lastTickTime >= 100){
+                createTick(now);
+                state.lastTickTime = now;
+                state.tickCount++;
+            }
+            
+            for (let i = state.timelineCharacters.length - 1; i >= 0; i--){
+                const char = state.timelineCharacters[i];
+                const timeDiff = now - char.timestamp;
+                const percentToMove = (timeDiff / 1000) * state.scrollSpeed / elements.timelineContainer.offsetWidth * 100;
+                const newPosition = state.indicatorPosition - percentToMove;
+                
+                char.element.style.left = `${newPosition}%`;
+                
+                //only the original author pushes to transcript
+                if (newPosition < 0 && !char.hasReachedEnd && char.userId === state.userId){
+                    char.hasReachedEnd = true;
+                    
+                    //push to firebase transcript
+                    push(ref(db, `${BASE_PATH}/transcript`),{
+                        char:char.character,
+                        timestamp:char.timestamp,
+                        userId:char.userId
+                    });
+                }
+                
+                //remove if too far left
+                if (newPosition < -10){
+                    char.element.remove();
+                    state.timelineCharacters.splice(i, 1);
+                    
+                    //remove from firebase characters collection
+                    if (char.firebaseKey){
+                        remove(ref(db, `${BASE_PATH}/characters/${char.firebaseKey}`));
                     }
                 }
             }
             
             //update ticks
-            for (let i = ticks.length - 1; i >= 0; i--) {
-                const tick = ticks[i];
+            for (let i = state.ticks.length - 1; i >= 0; i--){
+                const tick = state.ticks[i];
                 const timeDiff = now - tick.timestamp;
+                const percentToMove = (timeDiff / 1000) * state.scrollSpeed / elements.timelineContainer.offsetWidth * 100;
+                const newPosition = state.indicatorPosition - percentToMove;
                 
-                //new position based on time difference
-                const percentToMove = calculatePercentToMove(timeDiff);
-                
-                //new position
-                const newPosition = indicatorPosition - percentToMove;
-                
-                //update position
                 tick.element.style.left = `${newPosition}%`;
                 
-                //remove ticks off screen
-                if (newPosition < -5) {
-                    if (tick.element.parentNode) {
-                        tick.element.parentNode.removeChild(tick.element);
-                    }
-                    ticks.splice(i, 1);
+                if (newPosition < -5){
+                    tick.element.remove();
+                    state.ticks.splice(i, 1);
                 }
             }
         }
         
-        //focus input when timeline is clicked
-        timelineContainer.addEventListener('click', () => {
-            input.focus();
-        });
-        
-        //loop animation
-        function animate() {
-            updateTimeLabel();
-            generateTicks();
+        //animation loop without framerate limit
+        function animate(){
+            
+            //update time
+            elements.timeLabel.textContent = new Date().toLocaleTimeString([],{
+                hour:'2-digit',
+                minute:'2-digit',
+                second:'2-digit'
+            });
+            
             updatePositions();
             requestAnimationFrame(animate);
         }
         
-        //auto-focus the input field
-        window.addEventListener('load', () => {
-            initializeUser();
-            listenForUsers();
-            listenForCharacters();
-            input.focus();
-            animate();
+        //clear transcript function
+        function clearTranscript() {
+            //clear firebase transcript data
+            set(ref(db, `${BASE_PATH}/transcript`), null);
+        }
+        
+        //event listeners
+        elements.input.addEventListener('input', (e) =>{
+            const char = e.target.value.slice(-1);
+            if (char){
+                const timestamp = getServerTime();
+                
+                //save to firebase with server time
+                const characterRef = push(ref(db, `${BASE_PATH}/characters`));
+                set(characterRef, {
+                    char: char,
+                    timestamp: timestamp,
+                    userId: state.userId
+                });
+                
+                //create the timeline character locally
+                createTimelineCharacter(char, timestamp, state.userId, characterRef.key);
+                
+                e.target.value = '';
+            }
         });
         
-        //input stays focused
-        document.addEventListener('click', () => {
-            input.focus();
+        //clear transcript button
+        elements.clearButton.addEventListener('click', clearTranscript);
+        
+        document.addEventListener('click', (e) => {
+            //don't focus input when clicking clear button
+            if (e.target !== elements.clearButton) {
+                elements.input.focus();
+            }
         });
 
         //prevent backspace
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Backspace') {
-                event.preventDefault();
-            }
+        document.addEventListener('keydown', (e) =>{
+            if (e.key === 'Backspace') e.preventDefault();
         });
+        
+        //initialize
+        window.addEventListener('load', () =>{
+            initializeUser();
+            elements.input.focus();
+            requestAnimationFrame(animate);
+            
+            //set initial timeline height for one user
+            updateTimelineHeight(1);
+        });
+
+        //NO SAFARI
+        (function() {
+            function isSafari() {
+                const ua = navigator.userAgent.toLowerCase();
+                return (
+                    (ua.indexOf('safari') !== -1) && 
+                    (ua.indexOf('chrome') === -1) && 
+                    (ua.indexOf('android') === -1) &&
+                    (ua.indexOf('edg') === -1) &&
+                    (ua.indexOf('firefox') === -1)
+                );
+            }
+            
+            //safari
+            if(isSafari()) {
+                alert('This page is not compatible with Safari browsers. Please use Chrome, Firefox, or Edge instead.');
+                
+                //hide body
+                const style = document.createElement('style');
+                style.textContent = 'body { display: none !important; }';
+                document.head.appendChild(style);
+                
+                //prevent default behavior of any events
+                window.addEventListener('DOMContentLoaded', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, true);
+                
+                //stop execution of other scripts
+                throw new Error('Safari detected - halting execution');
+            }
+        })();
     </script>
 </body>
 </html>

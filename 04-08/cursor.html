@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Cursor Chat</title>
+  <title>live cursor</title>
   <style>
     html, body{
       margin:0;
@@ -10,15 +10,6 @@
       background:white;
       overflow:hidden;
       cursor:cell;
-    }
-
-    .cursor{
-      position:absolute;
-      width:5px;
-      height:5px;
-      pointer-events:none;
-      display:none;
-      z-index:10;
     }
 
     .text-char{
@@ -231,7 +222,8 @@
         }
         
         if (data.realigned === true) {
-          realignText(id);
+          // This is the key fix - properly handle realignment from other users
+          realignText(id, data.x, data.y);
         }
       }
       
@@ -413,23 +405,26 @@
     }
     
     //realign
-    function realignText(userId) {
-      const chain = physicsChains[userId];
+    function realignText(id, forcedX, forcedY) {
+      const chain = physicsChains[id];
       if (!chain?.bodies?.length) return;
       
-      const cursorX = chain.leadConstraint.pointA.x;
-      const cursorY = chain.leadConstraint.pointA.y;
+      const cursorX = forcedX !== undefined ? forcedX : chain.leadConstraint.pointA.x;
+      const cursorY = forcedY !== undefined ? forcedY : chain.leadConstraint.pointA.y;
       
       chain.bodies.forEach((body, i) => {
         const spacing = 15;
         const newX = cursorX + (i + 1) * spacing;
         const newY = cursorY;
         
+        //reset all physics properties
         Body.setVelocity(body, { x: 0, y: 0 });
+        Body.setAngularVelocity(body, 0);
+        Body.setAngle(body, 0);
         Body.setPosition(body, { x: newX, y: newY });
       });
       
-      if (userId === userId) {
+      if (id === window.userId) {
         window.textWasRealigned = true;
         updateFirebase(true);
         setTimeout(() => { window.textWasRealigned = false; }, 100);

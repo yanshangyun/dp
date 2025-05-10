@@ -63,7 +63,6 @@
         .player-indicator{
             position:fixed;
             padding:8px 12px;
-            font-weight:bold;
             background-color:rgba(255,255,255,0.8);
             border-radius:4px;
             box-shadow:0 2px 4px rgba(0,0,0,0.1);
@@ -116,22 +115,6 @@
             margin-bottom:8px;
         }
 
-        .connection-dot{
-            display:inline-block;
-            width:10px;
-            height:10px;
-            border-radius:50%;
-            margin-right:5px;
-        }
-
-        .connected{
-            background-color:#4caf50;
-        }
-
-        .disconnected{
-            background-color:#f44336;
-        }
-
         #controls{
             position:fixed;
             bottom:70px;
@@ -147,7 +130,6 @@
             border:none;
             border-radius:4px;
             cursor:pointer;
-            font-weight:bold;
             transition:all 0.2s;
         }
 
@@ -165,10 +147,6 @@
             background-color:#2196f3;
             color:white;
         }
-
-        .hidden{
-            display:none;
-        }
     </style>
 </head>
 <body>
@@ -183,7 +161,8 @@
     
     <div id="status">Connecting to server...</div>
     
-    <div id="info-panel">
+    <!-- Removed info panel -->
+    <!-- <div id="info-panel">
         <div class="panel-row">
             <span><span id="connection-status" class="connection-dot disconnected"></span> Server:</span>
             <span id="connection-text">Connecting...</span>
@@ -200,7 +179,7 @@
             <span>Current Cell:</span>
             <span id="current-cell">None</span>
         </div>
-    </div>
+    </div> -->
 
     <div id="controls">
         <button id="reset-btn" class="btn">Reset Grid</button>
@@ -244,11 +223,11 @@
         
         // DOM elements
         const gridElement = document.getElementById('typing-grid');
-        const connectionStatus = document.getElementById('connection-status');
-        const connectionText = document.getElementById('connection-text');
-        const activeUsersEl = document.getElementById('active-users');
-        const updateCounter = document.getElementById('update-counter');
-        const currentCellEl = document.getElementById('current-cell');
+        // const connectionStatus = document.getElementById('connection-status');
+        // const connectionText = document.getElementById('connection-text');
+        // const activeUsersEl = document.getElementById('active-users');
+        // const updateCounter = document.getElementById('update-counter');
+        // const currentCellEl = document.getElementById('current-cell');
         const statusElement = document.getElementById('status');
         const resetButton = document.getElementById('reset-btn');
         const centerButton = document.getElementById('center-btn');
@@ -331,7 +310,7 @@
                 });
                 
                 updateCount++;
-                updateCounter.textContent = updateCount;
+                // updateCounter.textContent = updateCount;
                 
                 // Update user's last activity
                 updateUserActivity();
@@ -360,7 +339,7 @@
             
             // Update active cell coordinates
             activeCell = { x, y };
-            currentCellEl.textContent = `(${x}, ${y})`;
+            // currentCellEl.textContent = `(${x}, ${y})`;
             
             // Ensure cell is visible
             ensureCellVisible(x, y);
@@ -452,7 +431,7 @@
             }
             
             // If all taken, choose randomly
-            return Math.floor(Math.random() * 4) + 1;
+            return null;
         }
         
         // Setup user monitoring and player assignment
@@ -460,11 +439,17 @@
             onValue(usersRef, (snapshot) => {
                 const users = snapshot.val() || {};
                 const userCount = Object.keys(users).length;
-                activeUsersEl.textContent = userCount;
+                console.log(userCount);
                 
                 // Assign player ID if not already assigned
                 if (!myPlayerId) {
                     myPlayerId = findAvailablePlayerId(users);
+
+                    if (myPlayerId === null) {
+                        // All player IDs are taken
+                        statusElement.textContent = "Error: All player IDs are currently taken. Please try again later.";
+                        return; // Exit the function
+                    }
                     
                     // Register player ID
                     set(ref(db, `${BASE_PATH}/users/${userId}/playerId`), myPlayerId);
@@ -485,8 +470,8 @@
                 const connected = snapshot.val() === true;
                 
                 // Update UI
-                connectionStatus.className = `connection-dot ${connected ? 'connected' : 'disconnected'}`;
-                connectionText.textContent = connected ? 'Connected' : 'Disconnected';
+                // connectionStatus.className = `connection-dot ${connected ? 'connected' : 'disconnected'}`;
+                // connectionText.textContent = connected ? 'Connected' : 'Disconnected';
                 
                 if (connected) {
                     // Register user

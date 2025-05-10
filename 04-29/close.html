@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        *{
+            box-sizing:border-box;
+        }
+
+        body, html{
+            font-family:'Times New Roman', Times, serif;
+            margin:0;
+            height:100vh;
+            width:100vw;
+            overflow:hidden;
+            font-size:12px;
+        }
+
+        ::selection{
+            background-color:black;
+            color:white;
+        }
+
+        #container{
+            display:flex;
+            flex-direction:column;
+            width:100%;
+            height:100%;
+            max-width:600px;
+            margin:0 auto;
+            align-items:center;
+            justify-content:center;
+            position:relative;
+        }
+
+        .chat1-container{
+            position:absolute;
+            top:0;
+            height:50vh;
+            width:100%;
+            overflow:hidden;
+        }
+
+        #chat1{
+            position:absolute;
+            bottom:0;
+            height:auto;
+            width:100%;
+            display:flex;
+            flex-direction:column-reverse;
+            align-items:center;
+            justify-content:flex-start;
+            transform:translateY(0);
+        }
+
+        .chat2-container{
+            position:absolute;
+            bottom:0;
+            height:50vh;
+            width:100%;
+            overflow:hidden;
+        }
+
+        #chat2{
+            position:absolute;
+            top:0;
+            height:auto;
+            width:100%;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:flex-start;
+            transform:translateY(0);
+        }
+
+        .message{
+            word-wrap:break-word;
+            font-size:12px;
+            text-align:center;
+            padding:0 5px;
+            width:fit-content;
+            margin:2px 0;
+            min-height:12px;
+            display:block;
+            z-index:0;
+        }
+
+        .message.user1{
+            animation:appear1 0.5s cubic-bezier(.44,0,.12,1);
+        }
+
+        .message.user2{
+            animation:appear2 0.5s cubic-bezier(.44,0,.12,1);
+        }
+        
+        @keyframes appear1{
+            from{
+                opacity:0;
+                transform:translateY(10px);
+            }
+            to{
+                opacity:1;
+                transform:translateY(0);
+            }
+        }
+
+        @keyframes appear2{
+            from{
+                opacity:0;
+                transform:translateY(-10px);
+            }
+            to{
+                opacity:1;
+                transform:translateY(0);
+            }
+        }
+        
+        .input-container{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            margin:0 auto;
+            display:flex;
+            justify-content:center;
+            text-align:center;
+            display:flex;
+            z-index:10;
+            width:100vw;
+            background: linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0),
+                rgb(255, 255, 255) 25%,
+                rgb(255, 255, 255) 75%,
+                rgba(255, 255, 255, 0)
+            );
+            height:200px;
+        }
+        
+        #inputField{
+            text-align:center;
+            width:100vw;
+            font-size:12px;
+            border:none;
+            outline:none;
+            font-family:'Times New Roman', Times, serif;
+            padding:0 5px;
+            background-color:transparent;
+        }
+        
+        .buttons-wrapper{
+            position:fixed;
+            bottom:10px;
+            display:flex;
+            padding:5px;
+            z-index:10;
+        }
+
+        button{
+            background-color:white;
+            border:1px solid black;
+            width:auto;
+            height:auto;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            font-size:12px;
+            padding:2px 8px;
+        }
+        
+        button:hover{
+            background-color:black;
+            color:white;
+        }
+
+        #backButton{
+            position:fixed;
+            top:10px;
+            left:10px;
+            z-index:10;
+            text-decoration:none;
+            color:black;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" id="backButton">← Back</a>
+    <div style="position:fixed; top:0; background:linear-gradient(to bottom,rgb(255, 255, 255) 50%,rgba(255, 255, 255, 0) 100%); width:100%; height:100px; z-index:1"></div>
+    <div style="position:fixed; bottom:0; background:linear-gradient(to top,rgb(255, 255, 255) 50%,rgba(255, 255, 255, 0) 100%); width:100%; height:100px; z-index:1"></div>
+    <div id="container">
+        <div class="chat1-container">
+            <div id="chat1"></div>
+        </div>
+        <div class="chat2-container">
+            <div id="chat2"></div>
+        </div>
+        <div class="input-container">
+            <input type="text" id="inputField" autocomplete="off">
+        </div>
+    </div>
+    <div class="buttons-wrapper">
+        <button id="clearButton">×</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, remove, set, get, onDisconnect } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+    
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain: "chat-f7267.firebaseapp.com",
+            databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId: "chat-f7267",
+            storageBucket: "chat-f7267.firebasestorage.app",
+            messagingSenderId: "393364272511",
+            appId: "1:393364272511:web:7d40dfd804011f210b964a"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        // Path configuration
+        const BASE_PATH = 'distance';
+        
+        const CHAT1_REF = ref(db, `${BASE_PATH}/chat1`);
+        const CHAT2_REF = ref(db, `${BASE_PATH}/chat2`);
+        const TYPING_REF = ref(db, `${BASE_PATH}/typing`);
+        const USERS_REF = ref(db, `${BASE_PATH}/users`);
+        
+        // DOM elements
+        const inputField = document.getElementById("inputField");
+        const chat1 = document.getElementById("chat1");
+        const chat2 = document.getElementById("chat2");
+        const chat1Container = document.querySelector(".chat1-container");
+        const chat2Container = document.querySelector(".chat2-container");
+        const clearButton = document.getElementById("clearButton");
+        
+        // User management
+        let USER_ID = null;
+        
+        // Initialize transforms for custom scrolling
+        function initializeTransforms() {
+            requestAnimationFrame(() => {
+                // For chat1 (column-reverse), start at max scroll position
+                const chat1Height = chat1.scrollHeight;
+                const chat1ContainerHeight = chat1Container.clientHeight;
+                
+                if (chat1Height > chat1ContainerHeight) {
+                    // Set initial position to maximum scroll
+                    const maxScroll = chat1Height - chat1ContainerHeight;
+                    chat1.style.transform = `translateY(${maxScroll}px)`;
+                } else {
+                    chat1.style.transform = 'translateY(0)';
+                }
+                
+                // For chat2 (column), start at bottom
+                const chat2Height = chat2.scrollHeight;
+                const chat2ContainerHeight = chat2Container.clientHeight;
+                
+                if (chat2Height > chat2ContainerHeight) {
+                    // Scroll to bottom using negative transform
+                    const scrollAmount = -(chat2Height - chat2ContainerHeight);
+                    chat2.style.transform = `translateY(${scrollAmount}px)`;
+                } else {
+                    chat2.style.transform = 'translateY(0)';
+                }
+            });
+        }
+        
+        // Helper function to get the current transform Y value
+        function getTransformValue(element) {
+            const transform = window.getComputedStyle(element).getPropertyValue('transform');
+            if (transform === 'none') return 0;
+            
+            const matrix = transform.match(/^matrix\((.+)\)$/);
+            if (!matrix || !matrix[1]) return 0;
+            
+            return parseFloat(matrix[1].split(', ')[5]); // The Y transform value is at index 5
+        }
+
+        const overshootAmount = 100; // pixels of extra scroll allowed
+        
+        //reverse scroll
+        document.addEventListener('wheel', function(e) {
+            e.preventDefault(); // Prevent default scrolling
+            
+            // Get the current heights for boundary checking
+            const chat1Height = chat1.scrollHeight;
+            const chat1ContainerHeight = chat1Container.clientHeight;
+            const chat2Height = chat2.scrollHeight;
+            const chat2ContainerHeight = chat2Container.clientHeight;
+            
+            // Only proceed if there's actual content to scroll
+            const chat1HasOverflow = chat1Height > chat1ContainerHeight;
+            const chat2HasOverflow = chat2Height > chat2ContainerHeight;
+            
+            if (!chat1HasOverflow && !chat2HasOverflow) {
+                return; // No need to scroll if there's no overflow
+            }
+            
+            // Get current transform values
+            const chat1Transform = getTransformValue(chat1);
+            const chat2Transform = getTransformValue(chat2);
+            
+            // Calculate new transform values
+            let newChat1Transform = chat1Transform;
+            let newChat2Transform = chat2Transform;
+            
+            // Define overshoot amount (adjust this value as needed)
+            
+            // Only apply scroll to chat1 if it has overflow
+            if (chat1HasOverflow) {
+                newChat1Transform = chat1Transform + e.deltaY;
+                
+                // Enforce boundaries for chat1 with overshoot
+                const chat1MaxScroll = chat1Height - chat1ContainerHeight + overshootAmount;
+                if (newChat1Transform > chat1MaxScroll) {
+                    newChat1Transform = chat1MaxScroll;
+                }
+                if (newChat1Transform < -overshootAmount) {
+                    newChat1Transform = -overshootAmount;
+                }
+            }
+            
+            // Only apply scroll to chat2 if it has overflow
+            if (chat2HasOverflow) {
+                newChat2Transform = chat2Transform - e.deltaY;
+                
+                // Enforce boundaries for chat2 with overshoot
+                const chat2MaxScroll = chat2Height - chat2ContainerHeight;
+                if (newChat2Transform > overshootAmount) {
+                    newChat2Transform = overshootAmount;
+                }
+                if (newChat2Transform < -(chat2MaxScroll + overshootAmount)) {
+                    newChat2Transform = -(chat2MaxScroll + overshootAmount);
+                }
+            }
+            
+            // Apply the new transform values
+            chat1.style.transform = `translateY(${newChat1Transform}px)`;
+            chat2.style.transform = `translateY(${newChat2Transform}px)`;
+        });
+        
+        // UI setup
+        inputField.disabled = true;
+        inputField.placeholder = "Connecting...";
+        
+        // Clear chat functionality
+        clearButton.addEventListener("click", () => {
+            remove(CHAT1_REF);
+            remove(CHAT2_REF);
+            chat1.innerHTML = "";
+            chat2.innerHTML = "";
+        });
+        
+        // Clear button hover effects
+        clearButton.addEventListener("mouseover", () => {
+            clearButton.textContent = "clear text";
+        });
+        
+        clearButton.addEventListener("mouseout", () => {
+            clearButton.textContent = "×";
+        });
+        
+        // Auto-resize input field
+        inputField.addEventListener("input", function() {
+
+            // Update typing status
+            if (this.value.trim() !== "" && USER_ID) {
+                set(ref(db, `${BASE_PATH}/typing/${USER_ID}`), {
+                    USER_ID: USER_ID,
+                    timestamp: Date.now()
+                });
+            } else if (USER_ID) {
+                remove(ref(db, `${BASE_PATH}/typing/${USER_ID}`));
+            }
+        });
+        
+        // Send message handler
+        inputField.addEventListener("keypress", function(event) {
+            if (event.key === "Enter" && !event.shiftKey && this.value.trim() !== "" && USER_ID) {
+                event.preventDefault();
+                
+                // Determine which chat to send to based on user ID
+                const chatRef = USER_ID === "1" ? CHAT1_REF : CHAT2_REF;
+                
+                // Store the message
+                push(chatRef, {
+                    USER_ID: USER_ID,
+                    text: this.value,
+                    timestamp: Date.now()
+                });
+                
+                // Clear input and typing status
+                this.value = "";
+                remove(ref(db, `${BASE_PATH}/typing/${USER_ID}`));
+                
+                // Update user activity timestamp
+                set(ref(db, `${BASE_PATH}/users/${USER_ID}`), { 
+                    active: true, 
+                    lastActive: Date.now() 
+                });
+            }
+        });
+        
+        // Create message element function
+        function createMessageElement(data, messageId) {
+            const messageDiv = document.createElement("div");
+            
+            // Add both the base message class and the user-specific class
+            const userId = data.USER_ID || "unknown";
+            messageDiv.className = `message user${userId}`;
+            
+            messageDiv.dataset.userId = userId;
+            messageDiv.id = messageId;
+            
+            const messageText = data.text || "";
+            
+            // Simply replace spaces with non-breaking spaces and new lines with <br>
+            let messageContent = messageText
+                .replace(/ /g, "&nbsp;")
+                .replace(/\n/g, "<br>");
+            
+            messageDiv.innerHTML = messageContent;
+            return messageDiv;
+        }
+        
+        //message listener
+        function setupMessageListeners() {
+            //chat 1
+            onChildAdded(CHAT1_REF, (snapshot) => {
+                const data = snapshot.val();
+                const messageElement = createMessageElement(data, snapshot.key);
+                chat1.appendChild(messageElement);
+                
+                requestAnimationFrame(() => {
+                    const chat1Height = chat1.scrollHeight;
+                    const chat1ContainerHeight = chat1Container.clientHeight;
+                    
+                    if (chat1Height > chat1ContainerHeight) {
+                        const maxScroll = chat1Height - chat1ContainerHeight + overshootAmount;
+                        chat1.style.transform = `translateY(${maxScroll}px)`;
+                    } else {
+                        chat1.style.transform = 'translateY(0)';
+                    }
+                });
+            });
+            
+            //chat 2
+            onChildAdded(CHAT2_REF, (snapshot) => {
+                const data = snapshot.val();
+                const messageElement = createMessageElement(data, snapshot.key);
+                chat2.appendChild(messageElement);
+                
+                requestAnimationFrame(() => {
+                    const chat2Height = chat2.scrollHeight;
+                    const chat2ContainerHeight = chat2Container.clientHeight;
+                    
+                    if (chat2Height > chat2ContainerHeight) {
+                        const scrollAmount = -(chat2Height - chat2ContainerHeight) - overshootAmount;
+                        chat2.style.transform = `translateY(${scrollAmount}px)`;
+                    } else {
+                        chat2.style.transform = 'translateY(0)';
+                    }
+                });
+            });
+        }
+        
+        //assign user id
+        async function assignUserId() {
+            try {
+                //assign user 1
+                const user1Snapshot = await get(ref(db, `${BASE_PATH}/users/1`));
+                if (!user1Snapshot.exists()) {
+                    USER_ID = "1";
+                    const userRef = ref(db, `${BASE_PATH}/users/1`);
+                    await set(userRef, { active: true, lastActive: Date.now() });
+                    
+                    //automatic cleanup
+                    onDisconnect(userRef).remove();
+                    onDisconnect(ref(db, `${BASE_PATH}/typing/1`)).remove();
+                    
+                    setupUserSession();
+                    return;
+                }
+                
+                //assign user 2
+                const user2Snapshot = await get(ref(db, `${BASE_PATH}/users/2`));
+                if (!user2Snapshot.exists()) {
+                    USER_ID = "2";
+                    const userRef = ref(db, `${BASE_PATH}/users/2`);
+                    await set(userRef, { active: true, lastActive: Date.now() });
+                    
+                    //automatic cleanup
+                    onDisconnect(userRef).remove();
+                    onDisconnect(ref(db, `${BASE_PATH}/typing/2`)).remove();
+                    
+                    setupUserSession();
+                    return;
+                }
+                
+                //if both are taken
+                document.body.innerHTML = "<h1 style='text-align:center;margin-top:100px;'>Chat room is full (2/2 users). Please try again later.</h1>";
+                
+            } catch (error) {
+                console.error("Error assigning user ID:", error);
+                inputField.placeholder = "Connection error";
+            }
+        }
+        
+        // Set up user session
+        function setupUserSession() {
+            // Enable input field
+            inputField.disabled = false;
+            inputField.placeholder = `${USER_ID}`;
+            inputField.focus();
+            
+            //check if still active
+            const userRef = ref(db, `${BASE_PATH}/users/${USER_ID}`);
+            const heartbeat = setInterval(() => {
+                if (USER_ID) {
+                    set(userRef, { active: true, lastActive: Date.now() });
+                } else {
+                    clearInterval(heartbeat);
+                }
+            }, 15000); //every 15 seconds
+            
+            //message listener
+            setupMessageListeners();
+        }
+        
+        //clean up on leave
+        window.addEventListener("beforeunload", () => {
+            if (USER_ID) {
+                remove(ref(db, `${BASE_PATH}/users/${USER_ID}`));
+                remove(ref(db, `${BASE_PATH}/typing/${USER_ID}`));
+            }
+        });
+        
+        window.addEventListener('DOMContentLoaded', initializeTransforms);
+        window.addEventListener('resize', initializeTransforms);
+        
+        assignUserId();
+    </script>
+</body>
+</html>

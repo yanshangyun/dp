@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nothing—Between</title>
+    <style>
+        @font-face{
+            font-family:'Helvetica Neue';
+            src:url('HelveticaNeue-Medium.woff2') format('woff2');
+        }
+
+        body{
+            font-family:'Helvetica Neue';
+            position:relative;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            font-size:12px;
+            overflow:hidden;
+            background-color:white;
+            cursor:none;
+        }
+
+        ::selection{
+            background-color:rgb(214, 214, 214);
+            color:black;
+        }
+
+        :root{
+            --circle-radius:300px;
+            --slide-transition-duration:800ms;
+        }
+
+        .container{
+            width:100%;
+            height:100%;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-direction:column;
+            cursor:none;
+        }
+
+        @keyframes close{
+            0%{
+                left:-20%;
+                right:-20%;
+            }
+            100%{
+                left:0;
+                right:0;
+            }
+        }
+
+        .title{
+            position:fixed;
+            left:-20%;
+            right:-20%;
+            top:50%;
+            transform:translateY(-50%);
+            padding:10px;
+            display:flex;
+            justify-content:space-between;
+            animation:close 2s cubic-bezier(0.1, 0, 0.1, 1) forwards;
+            animation-delay:1s;
+        }
+
+        .info{
+            position:fixed;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            top:0;
+        }
+
+        h1,
+        h2,
+        p{
+            font-size:12px;
+            font-weight:normal;
+            color:grey;
+        }
+        
+        a{
+            transform:skewY(0);
+            color:black;
+            transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+            /* line-height:0px; */
+            margin-top:-10px;
+            margin-bottom:20px;
+        }
+        
+        a:hover{
+            /* font-style:italic; */
+            /* letter-spacing:5px; */
+            /* transform:skewY(-12deg); */
+            background-color:rgba(0, 0, 0, 0.220);
+            /* border:0.5px black dashed; */
+            color:black;
+            
+        }
+
+        @keyframes expand{
+            0%{
+                width:0;
+                height:0;
+            }
+            100%{
+                width:calc(var(--circle-radius) * 2);
+                height:calc(var(--circle-radius) * 2);
+            }
+        }
+
+        @keyframes split{
+            0%{
+                gap:-200px;
+            }
+            100%{
+                gap:var(--circle-radius);
+            }
+        }
+        .circle-wrapper{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-direction:row;
+            z-index:-1;
+            animation:split 2s cubic-bezier(.66,0,.2,1) forwards;
+        }
+
+        .circle{
+            height:calc(var(--circle-radius) * 2.5);
+            width:calc(var(--circle-radius) * 2.5);
+            border-radius:100%;
+            border:0.5px solid black;
+            flex-grow:1;
+        }
+
+        #size{
+            position:fixed;
+            width:100%;
+            height:100%;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:1000;
+            background-color:black;
+        }
+
+        #check{
+            position:fixed;
+            width:100%;
+            height:100%;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:1000;
+            background-color:rgb(185, 185, 185);
+            color:black;
+        }
+
+        @media only screen and (max-width: 1000px){
+            #size{
+                display:flex;
+            }
+
+            #activeUsers{
+                display:none;
+            }
+        }
+
+        .slides-container{
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            z-index:-2;
+            overflow:hidden;
+        }
+
+        .slide{
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            transform:translateY(100%); 
+            transition:transform var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1), opacity var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1);
+            pointer-events:none;
+            overflow:hidden;
+            z-index:-100;
+        }
+
+        .slide.active{
+            transform:translateY(0);
+            z-index:-1;
+            pointer-events:auto;
+        }
+
+        .slide-content{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            height:100%;
+            width:100%;
+            padding-top:100px;
+            padding-bottom:100px;
+            box-sizing:border-box;
+        }
+
+        img{
+            position:relative;
+            height:80%;
+            width:auto;
+            object-fit:contain;
+        }
+
+        .shape{
+            margin:20px;
+            transition:all 0.3s ease;
+        }
+
+        #slideIndicator{
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            color:grey;
+            /* border:0.5px solid white; */
+            padding:5px 10px;
+            border-radius:20px;
+            z-index:100;
+            /* mix-blend-mode:exclusion; */
+        }
+    </style>
+</head>
+<body>
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; opacity:0.5; mix-blend-mode:differences;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; left:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; right:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; bottom:10px; left:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; bottom:10px; right:10px; width:15px; height:15px;">
+    </div>
+    <div id="size">
+        <p>Too small!</p>
+    </div>
+    <div id="check">
+        <p>Are you still there?</p>
+    </div>
+    <div class="info">
+        <p id="currentTime"></p>
+        <p id="activeUsers">0</p>
+    </div>
+    
+    <div id="slideIndicator">Slide: 1/3</div>
+    
+    <div class="slides-container">
+        <div class="slide" style="background-color:black;">
+            <div class="slide-content" style="color:white">
+                <p>Nothing in Between</p>
+                <p style="opacity:0.5">
+                    Ryan Yan
+                    <br>
+                    Graphic Design Degree Project
+                    <br>
+                    2025
+                </p>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35845588/original_0cee0266f4a8b8e7d9698ea606cedbad.jpg?1744126094?bc=0">
+                <div class="caption">DSi</div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div class="image-wrapper" style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:30vw; gap:20px;">
+                    <img src="https://external-preview.redd.it/Kolb2FzAVrTN54OCavGJY8Ms0_Df4goLzTmlyVu0J18.jpg?width=640&crop=smart&auto=webp&s=15326b711820791a8e85d5c185da4b7273d71068">
+                    <img src="https://static.wixstatic.com/media/c99e14_6f301fe70cb14b42beec089545973ad2~mv2.gif">
+                </div>
+                <div class="caption">DSi</div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719851/original_2c73922d1701a07b260fabd3aa512e64.jpg?1740172835?bc=0">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center">
+                    <p style="margin-right:10px;">young</p>
+                    <div style="height:0.5px; width:60vw; background-color: black;"></div>
+                    <p style="margin-left:10px;">old</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:10vw; width:10vw; border:0.5px solid black;">
+                    <p>group huddle!</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:left; width:80vw;">
+                    <p style="margin-right:10px;">line up! →</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36552428/original_86dc33086a6f2786538a258422e1fc34.gif?1746736905?bc=0" style="width:20vw">
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        //import
+        import{ initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import{ getDatabase, ref, set, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        
+        //firebase
+        const firebaseConfig ={
+            apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain:"chat-f7267.firebaseapp.com",
+            databaseURL:"https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId:"chat-f7267",
+            storageBucket:"chat-f7267.firebasestorage.app",
+            messagingSenderId:"393364272511",
+            appId:"1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId:"G-X3PF8YJYT8"
+        };
+        
+        //initialize
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        //setup
+        const BASE_PATH = 'presentation';
+        
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        const username = userId.slice(-4);
+        
+        const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
+        const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
+        const connectedRef = ref(db, '.info/connected');
+
+        const slideStateRef = ref(db, `${BASE_PATH}/slideState`);
+        const currentSlideIndexRef = ref(db, `${BASE_PATH}/slideState/currentSlideIndex`);
+        const slideDirectionRef = ref(db, `${BASE_PATH}/slideState/direction`);
+
+        const computedStyle = getComputedStyle(document.documentElement);
+        
+        //update position
+        function updateCursorPosition(event){
+            const xPercent = (event.clientX / window.innerWidth) * 100;
+            const yPercent = (event.clientY / window.innerHeight) * 100;
+            
+            set(userCursorRef,{
+                xPercent:xPercent,
+                yPercent:yPercent,
+                username:username,
+                timestamp:Date.now(),
+            });
+        }
+        
+        //default data
+        function setInitialCursor(){
+            set(userCursorRef,{
+                xPercent:0,
+                yPercent:0,
+                username:username,
+                timestamp:Date.now(),
+            });
+        }
+        
+        const cursorElements ={};
+        
+        //track movement
+        onValue(connectedRef, (snapshot) =>{
+            if (snapshot.val() === true){
+                onDisconnect(userCursorRef).remove();
+                setInitialCursor();
+                document.addEventListener('mousemove', updateCursorPosition);
+            }
+        });
+
+        function createCursorElement() {
+            const cursor = document.createElement('img');
+            cursor.src = 'default.svg';
+            cursor.style.position = 'fixed';
+            cursor.style.pointerEvents = 'none';
+            cursor.style.width = '30px';
+            cursor.style.height = '30px';
+            cursor.style.transform = 'translate(-50%, -50%)';
+            cursor.style.zIndex = '1000';
+            document.body.appendChild(cursor);
+            return cursor;
+        }
+
+        //handle cursor updates
+        function setupCursorTracking(){
+            onValue(cursorsRef, (snapshot) =>{
+                const data = snapshot.val() ||{};
+                
+                Object.keys(cursorElements).forEach(key =>{
+                    if (!data[key]){
+                        if (cursorElements[key] && cursorElements[key].parentNode){
+                            cursorElements[key].remove();
+                        }
+                        delete cursorElements[key];
+                    }
+                });
+                
+                Object.entries(data).forEach(([key, value]) =>{
+                    let cursor = cursorElements[key];
+                    
+                    if (!cursor){
+                        cursor = createCursorElement();
+                        cursorElements[key] = cursor;
+                    }
+                    
+                    if (value.xPercent !== undefined && value.yPercent !== undefined){
+                        const xPixel = (value.xPercent / 100) * window.innerWidth;
+                        const yPixel = (value.yPercent / 100) * window.innerHeight;
+                        cursor.style.left = `${xPixel}px`;
+                        cursor.style.top = `${yPixel}px`;
+                        
+                        //store percentages in dataset for resize handling
+                        cursor.dataset.xPercent = value.xPercent;
+                        cursor.dataset.yPercent = value.yPercent;
+                    }
+                    
+                    cursor.dataset.timestamp = value.timestamp;
+                });
+
+                document.getElementById('activeUsers').textContent = Object.keys(cursorElements).length;
+            });
+        }
+
+        //remove idle cursors
+        function setupIdleCursorCleanup(){
+            const checkDiv = document.getElementById('check');
+            let userActive = true;
+            let idleTimer;
+            const idleTime = 30000; //timeout
+            
+            //reset idle timer on any user activity
+            function resetIdleTimer() {
+                clearTimeout(idleTimer);
+                if(!userActive) {
+                    userActive = true;
+                    checkDiv.style.display = 'none';
+                }
+                
+                idleTimer = setTimeout(() => {
+                    userActive = false;
+                    checkDiv.style.display = 'flex';
+                }, idleTime);
+            }
+            
+            //reset timer on mouse move and key press
+            document.addEventListener('mousemove', resetIdleTimer);
+            document.addEventListener('keydown', resetIdleTimer);
+            
+            //initial timer start
+            resetIdleTimer();
+            
+            function removeIdleCursors(){
+                const now = Date.now();
+                Object.entries(cursorElements).forEach(([key, element]) =>{
+                    const timestamp = parseInt(element.dataset.timestamp, 10);
+                    if (!timestamp || now - timestamp > idleTime){
+                        element.remove();
+                        delete cursorElements[key];
+                        remove(ref(db, `${BASE_PATH}/cursors/${key}`));
+                    }
+                });
+            }
+
+            setInterval(removeIdleCursors, idleTime);
+        }
+
+        function setupTimeDisplay(){
+            function updateTime(){
+                document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+            }
+
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+
+        // SLIDES
+
+        let isAnimating = false;
+
+        function initializeSlideState() {
+            const totalSlides = document.querySelectorAll('.slide').length;
+
+            //reset
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+                slide.style.transform = 'translateY(100%)';
+            });
+
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { currentSlideIndex: 0 }; //default to 0 if no data
+                const initialIndex = data.currentSlideIndex;
+
+                //set initial state
+                set(slideStateRef, {
+                    currentSlideIndex: initialIndex,
+                    totalSlides: totalSlides,
+                    direction: 'next'
+                });
+
+                //update indicator
+                updateSlideIndicator(initialIndex, totalSlides);
+                showSlide(initialIndex, 'next'); //show initial slide
+            });
+        }
+
+        function updateSlideIndicator(currentIndex, totalSlides) {
+            const indicator = document.getElementById('slideIndicator');
+            indicator.textContent = `${currentIndex + 1}`;
+        }
+
+        function showSlide(newIndex, direction) {
+            if (isAnimating) {
+                //prevent concurrent animations
+                return;
+            }
+            
+            const slides = document.querySelectorAll('.slide');
+            
+            //find current active slide
+            const currentIndex = [...slides].findIndex(slide => 
+                slide.classList.contains('active'));
+            
+            //if no slide is active yet, show the first one
+            if (currentIndex === -1) {
+                slides[newIndex].style.transform = 'translateY(0)';
+                slides[newIndex].classList.add('active');
+                updateSlideIndicator(newIndex, slides.length);
+                return;
+            }
+            
+            //get current and new slide elements
+            const currentSlide = slides[currentIndex];
+            const newSlide = slides[newIndex];
+            
+            //skip if trying to show the same slide
+            if (currentIndex === newIndex) return;
+            
+            //lock animations
+            isAnimating = true;
+            
+            //reset all non-active slides to their starting positions
+            slides.forEach(slide => {
+                if (slide !== currentSlide && !slide.classList.contains('active')) {
+                    slide.style.transition = 'none';
+                    if (direction === 'next') {
+                        slide.style.transform = 'translateY(100%)'; //position below
+                    } else {
+                        slide.style.transform = 'translateY(-100%)'; //position above
+                    }
+                    //force reflow
+                    void slide.offsetWidth;
+                    //restore transition
+                    slide.style.transition = '';
+                }
+            });
+            
+            //reposition
+            if (direction === 'next') {
+                newSlide.style.transform = 'translateY(100%)'; //start below
+            } else {
+                newSlide.style.transform = 'translateY(-100%)'; //start above
+            }
+            
+            //force reflow
+            void newSlide.offsetWidth;
+            
+            //start animation
+            newSlide.classList.add('active');
+            
+            //move current slide out
+            if (direction === 'next') {
+                currentSlide.style.transform = 'translateY(-100%)'; //exit to top
+            } else {
+                currentSlide.style.transform = 'translateY(100%)'; //exit to bottom
+            }
+            
+            //move new slide in
+            newSlide.style.transform = 'translateY(0)';
+            
+            const transitionDuration = parseFloat(computedStyle.getPropertyValue('--slide-transition-duration')) || 800;
+            
+            //after animation completes
+            setTimeout(() => {
+                //clean up
+                currentSlide.classList.remove('active');
+                
+                //update indicator
+                updateSlideIndicator(newIndex, slides.length);
+                
+                //release animation lock
+                isAnimating = false;
+            }, transitionDuration + 50); //add a small buffer
+        }
+
+        function changeSlide(direction) {
+            if (isAnimating) return;
+            
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { 
+                    currentSlideIndex: 0, 
+                    totalSlides: 3, 
+                    direction: 'next' 
+                };
+                
+                let newIndex = data.currentSlideIndex + direction;
+                
+                //clamp index to valid range
+                if (newIndex < 0) newIndex = 0;
+                if (newIndex >= data.totalSlides) newIndex = data.totalSlides - 1;
+                
+                //only update if actually changing slides
+                if (newIndex !== data.currentSlideIndex) {
+                    const directionName = direction > 0 ? 'next' : 'prev';
+                    
+                    //update state in firebase
+                    set(slideStateRef, {
+                        currentSlideIndex: newIndex,
+                        totalSlides: data.totalSlides,
+                        direction: directionName
+                    });
+                }
+            }, {
+                onlyOnce: true
+            });
+        }
+
+        function setupKeyboardNavigation() {
+            let lastKeyPressTime = 0;
+            const MIN_KEY_DELAY = 100;
+            let enterPressed = false;
+            
+            //track enter press
+            document.addEventListener('keydown', (event) => {
+                if(event.key === 'Enter') {
+                    enterPressed = true;
+                }
+            });
+            
+            //track enter release
+            document.addEventListener('keyup', (event) => {
+                if(event.key === 'Enter') {
+                    enterPressed = false;
+                }
+            });
+            
+            //arrow keys
+            document.addEventListener('keydown', (event) => {
+                //only proceed if Enter is currently pressed
+                if(!enterPressed) return;
+                
+                const now = Date.now();
+                
+                if (now - lastKeyPressTime < MIN_KEY_DELAY) {
+                    return;
+                }
+                
+                if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                    changeSlide(1);
+                    lastKeyPressTime = now;
+                    event.preventDefault();
+                } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                    changeSlide(-1);
+                    lastKeyPressTime = now;
+                    event.preventDefault();
+                }
+            });
+        }
+
+        function listenToSlideChanges() {
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { 
+                    currentSlideIndex: 0, 
+                    totalSlides: 3, 
+                    direction: 'next' 
+                };
+                
+                showSlide(data.currentSlideIndex, data.direction);
+            });
+        }
+
+        //handle window resize
+        window.addEventListener('resize', () =>{
+            Object.entries(cursorElements).forEach(([key, cursor]) =>{
+                if (cursor.dataset.xPercent !== undefined && cursor.dataset.yPercent !== undefined){
+                    const xPixel = (parseFloat(cursor.dataset.xPercent) / 100) * window.innerWidth;
+                    const yPixel = (parseFloat(cursor.dataset.yPercent) / 100) * window.innerHeight;
+                    cursor.style.left = `${xPixel}px`;
+                    cursor.style.top = `${yPixel}px`;
+                }
+            });
+        });
+
+        //initialize everything when DOM is loaded
+        window.addEventListener('DOMContentLoaded', () =>{            
+            //setup all components
+            setupCursorTracking();
+            setupIdleCursorCleanup();
+            setupTimeDisplay();
+            
+            //new slide functionality
+            initializeSlideState();
+            setupKeyboardNavigation();
+            listenToSlideChanges();
+            
+            //show the first slide initially
+            showSlide(0, 'next');
+        });
+    </script>
+</body>
+</html>
