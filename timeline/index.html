@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>room selection</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="../script.js"></script>
+</head>
+<body>
+    <a id="backButton" onclick="goBack()">← Back</a>
+    <div class="room-selection">
+        <p>Select a chat room to join.</p>
+        <div class="room-button-wrapper" id="roomList">
+            <!--room buttons-->
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script type="module">
+        import{ initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import{ getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        const app = initializeApp({
+            apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain:"chat-f7267.firebaseapp.com",
+            databaseURL:"https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId:"chat-f7267",
+            storageBucket:"chat-f7267.firebasestorage.app",
+            messagingSenderId:"393364272511",
+            appId:"1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId:"G-X3PF8YJYT8"
+        });
+        
+        const db = getDatabase(app);
+        const BASE_PATH = 'timeline';
+        
+        const MAX_USERS_PER_ROOM = 5;
+        const TOTAL_ROOMS = 4;
+        
+        const roomList = document.getElementById('roomList');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        //room data structure
+        const rooms = {};
+        for(let i = 1; i <= TOTAL_ROOMS; i++) {
+            rooms[`${i}`] = {
+                id: `${i}`,
+                name: `Room ${i}`,
+                users: {},
+                userCount: 0
+            };
+        }
+        
+        //listen for user counts in all rooms
+        function listenToRooms() {
+            for(let roomId in rooms) {
+                const roomUsersRef = ref(db, `${BASE_PATH}/${roomId}/users`);
+                onValue(roomUsersRef, (snapshot) => {
+                    const users = snapshot.val() || {};
+                    rooms[roomId].users = users;
+                    rooms[roomId].userCount = Object.keys(users).length;
+                    updateRoomDisplay();
+                });
+            }
+        }
+        
+        //update the room display
+        function updateRoomDisplay() {
+            roomList.innerHTML = '';
+            
+            for(let roomId in rooms) {
+                const room = rooms[roomId];
+                const isFull = room.userCount >= MAX_USERS_PER_ROOM;
+                
+                const button = document.createElement('div');
+                button.className = `room-button ${isFull ? 'full' : ''}`;
+                button.innerHTML = `
+                    <span>${room.name}</span>
+                    <span class="capacity">${room.userCount}/${MAX_USERS_PER_ROOM}</span>
+                `;
+                
+                if(!isFull) {
+                    button.addEventListener('click', () => joinRoom(roomId));
+                } else {
+                    button.addEventListener('click', () => {
+                        errorMessage.textContent = 'Chat room full!';
+                        setTimeout(() => {
+                            errorMessage.textContent = '';
+                        }, 3000);
+                    });
+                }
+                
+                roomList.appendChild(button);
+            }
+        }
+        
+        //join a room
+        function joinRoom(roomId) {
+            //double-check if room is full
+            if(rooms[roomId].userCount >= MAX_USERS_PER_ROOM) {
+                errorMessage.textContent = 'Chat room full';
+                setTimeout(() => {
+                    errorMessage.textContent = '';
+                }, 2000);
+                return;
+            }
+            
+            //redirect to timeline with room parameter
+            window.location.href = `timeline.html?room=${roomId}`;
+        }
+        
+        //initialize
+        window.addEventListener('load', () => {
+            listenToRooms();
+        });
+        
+        //safari check
+        (function() {
+            function isSafari() {
+                const ua = navigator.userAgent.toLowerCase();
+                return (
+                    (ua.indexOf('safari') !== -1) && 
+                    (ua.indexOf('chrome') === -1) && 
+                    (ua.indexOf('android') === -1) &&
+                    (ua.indexOf('edg') === -1) &&
+                    (ua.indexOf('firefox') === -1)
+                );
+            }
+            
+            if(isSafari()) {
+                alert('This page is not compatible with Safari browsers. Please use Chrome, Firefox, or Edge instead.');
+                
+                const style = document.createElement('style');
+                style.textContent = 'body { display: none !important; }';
+                document.head.appendChild(style);
+                
+                window.addEventListener('DOMContentLoaded', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, true);
+                
+                throw new Error('Safari detected - halting execution');
+            }
+        })();
+    </script>
+</body>
+</html>

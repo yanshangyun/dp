@@ -1,16 +1,30 @@
+body{
+    opacity:0;
+    animation:loadIn 1s linear forwards;
+}
+
+@keyframes loadIn{
+    0%{
+        opacity:0%;
+    }
+    100%{
+        opacity:100;
+    }
+}
+
 #backButton{
     position:fixed;
     top:5px;
     left:5px;
     color:black;
-    transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+    transition:padding 0.25s cubic-bezier(.24,0,.16,1), letter-spacing 0.5s cubic-bezier(.24,0,.16,1);
     font-size:12px;
     font-family:Arial, Helvetica, sans-serif;
     z-index:1000;
+    cursor:pointer;
 }
 
 #backButton:hover{
-    font-style:italic;
     letter-spacing:5px;
     background-color:white;
     border:0.5px black dashed;

@@ -37,14 +37,24 @@
             width:60%;
             bottom:20px;
             text-align:center;
+            justify-content:center;
+            align-items:center;
             font-family:arial;
             resize:none;
             border:none;
             outline:none;
             font-size:20px;
             color:rgb(211, 211, 211);
-            height:auto;
+            height:65px;
             overflow:hidden;
+            background-color:transparent;
+            padding:10px;
+            display:flex;
+        }
+
+        #inputText::placeholder{
+            color:rgb(211, 211, 211);
+            opacity:0.7;
         }
 
         #outputText{
@@ -52,15 +62,17 @@
             line-height:90px;
             text-align:center;
             color:rgb(211, 211, 211);
-            animation:blink 5s infinite;
             text-shadow:0 0 15px rgba(0, 0, 0, 0.185);
         }
     </style>
+    <link rel="stylesheet" href="../style.css">
+    <script src="../script.js"></script>
 </head>
-<body>    
+<body>
+    <a id="backButton" onclick="goBack()">← Back</a>
     <div class="container">
         <div id="outputText"></div>
-        <div id="inputText" contenteditable="true"></div>
+        <textarea id="inputText" placeholder="Start typing..."></textarea>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -173,7 +185,12 @@
             
             //convert input text to random style
             function convertText(){
-                const text = inputText.innerText; // Get text from contenteditable div
+                const text = inputText.value; // Get value from textarea
+                if(text.trim() === "") {
+                    outputText.innerHTML = "";
+                    return;
+                }
+                
                 const lines = text.split('\n');
                 
                 const convertedLines = lines.map(line => {
@@ -196,8 +213,14 @@
                 outputText.innerHTML = converted.replace(/\n/g, '<br>');
             }
             
-            //event listener for input changes
-            inputText.addEventListener('input', convertText);
+            //auto resize textarea as user types
+            inputText.addEventListener('input', function() {
+                convertText();
+                
+                //adjust height based on content
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
             
             //initialize
             loadAllMappings();

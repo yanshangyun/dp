@@ -4,188 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>timeline</title>
-    <style>        
-        body{
-            font-family:Arial, Helvetica, sans-serif;
-            margin:0;
-            padding:0;
-            overflow:hidden;
-            font-size:12px;
-            width:100vw;
-            height:100vh;
-            display:flex;
-            flex-direction:column;
-            justify-content:center;
-            align-items:center;
-        }
-
-        :root{
-            --indicator-position:0%;
-            --timeline-height:100px;
-        }
-
-        .container{
-            display:flex;
-            flex-direction:column;
-            justify-content:center;
-            height:100vh;
-            padding:20px;
-            box-sizing:border-box;
-            width:80vw;
-            min-width:800px;
-            max-width:1600px;
-        }
-
-        .input-area{
-            position:absolute;
-            opacity:0;
-            pointer-events:none;
-        }
-
-        @keyframes timelineShadow{
-            0%{
-                box-shadow:0 0 0 rgba(0, 0, 0, 0);
-            }
-            100%{
-                box-shadow:0 5px 10px rgba(0, 0, 0, 0.100);
-            }
-        }
-
-        @keyframes transcriptShadow{
-            0%{
-                box-shadow:inset 0 0 0 rgba(0, 0, 0, 0);
-            }
-            100%{
-                box-shadow:inset 0 2px 5px rgba(0, 0, 0, 0.100);
-            }
-        }
-
-        @keyframes wipe{
-            0%{
-                left:0;
-            }
-            100%{
-                left:var(--indicator-position);
-            }
-        }
-
-        .timeline-container{
-            position:relative;
-            background-color:white;
-            overflow:hidden;
-            cursor:text;
-            height:var(--timeline-height);
-            border:solid 0.5px black;
-            animation:timelineShadow 1s cubic-bezier(.78,0,.2,1) forwards;
-            animation-delay:3s;
-            margin-bottom:20px;
-            transition:height 1s cubic-bezier(.78,0,.2,1);
-            /* border-radius:5px; */
-        }
-
-        .time-indicator{
-            position:absolute;
-            height:100%;
-            width:0.5px;
-            background-color:black;
-            top:0;
-            z-index:10;
-            animation:wipe 2s cubic-bezier(.78,0,.2,1) forwards;
-            animation-delay:0.5s;
-        }
-
-        .time-label{
-            position:absolute;
-            top:10px;
-            color:#666;
-            transform:translateX(10px);
-            animation:wipe 2s cubic-bezier(.78,0,.2,1) forwards;
-            animation-delay:0.5s;
-        }
-
-        .character{
-            position:absolute;
-            font-size:12px;
-            transform:translateY(-50%);
-            transition:top 1s cubic-bezier(.78,0,.2,1);
-            animation:appear 0.5s cubic-bezier(.25,0,.2,1) forwards;
-        }
-
-        @keyframes appear{
-            0%{
-                opacity:0%;
-            }
-            100%{
-                opacity:100%;
-            }
-        }
-        
-        .tick{
-            position:absolute;
-            height:100%;
-            width:1px;
-            background-color:rgba(0, 0, 0, 0.100);
-            bottom:0%;
-            z-index:5;
-        }
-        
-        .debug-panel{
-            position:fixed;
-            bottom:10px;
-            right:10px;
-        }
-
-        .clear-button{
-            background-color:#f4f4f4;
-            border:solid 1px #ddd;
-        }
-
-        @keyframes open{
-            0%{
-                height:0;
-                padding:0px;
-                background-color:transparent;
-                border:solid 0px #ddd;
-            }
-            100%{
-                height:40vh;
-                padding:10px;
-                background-color:#f9f9f9;
-                border:solid 0.5px #ddd;
-            }
-        }
-
-        .transcript-container{
-            position:relative;
-            overflow:auto;
-            white-space:pre-wrap;
-            flex-grow:0;
-            height:0;
-            word-break:break-all;
-            margin-bottom:10px;
-            font-size:12px;
-            font-family:monospace;
-            animation:open 1s cubic-bezier(.78,0,.2,1) forwards, transcriptShadow 1s cubic-bezier(.78,0,.2,1) forwards;
-            animation-delay:3s;
-            /* border-radius:5px; */
-        }
-
-        .transcript-line{
-            margin-bottom:5px;
-            min-height:16px;
-            line-height:1.5;
-            word-wrap:break-word;
-        }
-
-        .user-count{
-            color:#999;
-            font-style:italic;
-        }
-    </style>
     <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="../script.js"></script>
 </head>
 <body>
-    <a href="../index.html" id="backButton">← Back</a>
+    <div id="backButton">← Back</div>
     <div class="container">
         <div class="input-area">
             <input type="text" id="typing-input" autocomplete="off">
@@ -203,7 +27,7 @@
 
     <script type="module">
         import{ initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import{ getDatabase, ref, set, push, onValue, onDisconnect, onChildAdded, remove, query, orderByChild } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        import{ getDatabase, ref, set, push, onValue, onDisconnect, onChildAdded, remove, query, orderByChild, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
         const app = initializeApp({
             apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
@@ -218,6 +42,13 @@
         
         const db = getDatabase(app);
         const BASE_PATH = 'timeline';
+        const MAX_USERS_PER_ROOM = 5;
+        
+        //get room id from url
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentRoom = urlParams.get('room') || 'room1';
+
+        const userId = 'user_' + Math.random().toString(36).substring(2, 15);
         
         //add server time offset
         let serverTimeOffset = 0;
@@ -240,7 +71,7 @@
         }
         
         const state ={
-            userId:'user_' + Math.random().toString(36).substring(2, 15),
+            userId:userId,
             startTime:new Date(),
             indicatorPosition:90,
             scrollSpeed:100,
@@ -253,7 +84,8 @@
             transcriptEntries:[],
             baseTimelineHeight:parseInt(getComputedStyle(document.documentElement).getPropertyValue('--timeline-height')),
             maxTimelineHeight:1000,
-            heightPerUser:100
+            heightPerUser:100,
+            currentRoom:currentRoom
         };
         
         //DOM elements
@@ -263,19 +95,41 @@
             timeLabel:document.getElementById('current-time'),
             transcriptArea:document.getElementById('transcript-area'),
             activeUsersCount:document.getElementById('active-users-count'),
-            clearButton:document.getElementById('clear-transcript')
+            clearButton:document.getElementById('clear-transcript'),
+            backButton:document.getElementById('backButton'),
         };
         
         document.documentElement.style.setProperty('--indicator-position', `${state.indicatorPosition}%`);
         
+        //check if room is full before joining
+        async function checkRoomAvailability() {
+            const roomUsersRef = ref(db, `${BASE_PATH}/${state.currentRoom}/users`);
+            const snapshot = await get(roomUsersRef);
+            const users = snapshot.val() || {};
+            const userCount = Object.keys(users).length;
+            
+            //if room is full and we're not already in it
+            if(userCount >= MAX_USERS_PER_ROOM && !users[state.userId]) {
+                alert('Chat room full, returning to room selection.');
+                window.location.href = 'index.html';
+                return false;
+            }
+            
+            return true;
+        }
+        
         //initialize user
-        function initializeUser(){
-            const userRef = ref(db, `${BASE_PATH}/users/${state.userId}`);
+        async function initializeUser(){
+            //check if room is available before joining
+            const isAvailable = await checkRoomAvailability();
+            if(!isAvailable) return;
+            
+            const userRef = ref(db, `${BASE_PATH}/${state.currentRoom}/users/${state.userId}`);
             set(userRef,{ connected:true });
             onDisconnect(userRef).remove();
             
             //listen for users
-            onValue(ref(db, `${BASE_PATH}/users`), (snapshot) =>{
+            onValue(ref(db, `${BASE_PATH}/${state.currentRoom}/users`), (snapshot) =>{
                 const users = snapshot.val() ||{};
                 const newActiveUsers = Object.keys(users);
                 const previousUserCount = state.activeUsers.length;
@@ -288,7 +142,7 @@
             });
             
             //listen for characters from other users
-            onChildAdded(ref(db, `${BASE_PATH}/characters`), (snapshot) =>{
+            onChildAdded(ref(db, `${BASE_PATH}/${state.currentRoom}/characters`), (snapshot) =>{
                 const data = snapshot.val();
                 if (data && data.userId !== state.userId){
                     createTimelineCharacter(data.char, data.timestamp, data.userId, snapshot.key);
@@ -296,7 +150,7 @@
             });
             
             //listen for transcript changes
-            const transcriptRef = query(ref(db, `${BASE_PATH}/transcript`), orderByChild('timestamp'));
+            const transcriptRef = query(ref(db, `${BASE_PATH}/${state.currentRoom}/transcript`), orderByChild('timestamp'));
             onValue(transcriptRef, (snapshot) =>{
                 const transcriptData = snapshot.val() ||{};
                 const entries = Object.entries(transcriptData)
@@ -441,7 +295,7 @@
                     char.hasReachedEnd = true;
                     
                     //push to firebase transcript
-                    push(ref(db, `${BASE_PATH}/transcript`),{
+                    push(ref(db, `${BASE_PATH}/${state.currentRoom}/transcript`),{
                         char:char.character,
                         timestamp:char.timestamp,
                         userId:char.userId
@@ -455,7 +309,7 @@
                     
                     //remove from firebase characters collection
                     if (char.firebaseKey){
-                        remove(ref(db, `${BASE_PATH}/characters/${char.firebaseKey}`));
+                        remove(ref(db, `${BASE_PATH}/${state.currentRoom}/characters/${char.firebaseKey}`));
                     }
                 }
             }
@@ -493,7 +347,14 @@
         //clear transcript function
         function clearTranscript() {
             //clear firebase transcript data
-            set(ref(db, `${BASE_PATH}/transcript`), null);
+            set(ref(db, `${BASE_PATH}/${state.currentRoom}/transcript`), null);
+        }
+        
+        //leave room and go back to room selection
+        function leaveRoom() {
+            const userRef = ref(db, `${BASE_PATH}/${state.currentRoom}/users/${state.userId}`);
+            remove(userRef);
+            window.location.href = 'index.html';
         }
         
         //event listeners
@@ -503,7 +364,7 @@
                 const timestamp = getServerTime();
                 
                 //save to firebase with server time
-                const characterRef = push(ref(db, `${BASE_PATH}/characters`));
+                const characterRef = push(ref(db, `${BASE_PATH}/${state.currentRoom}/characters`));
                 set(characterRef, {
                     char: char,
                     timestamp: timestamp,
@@ -520,9 +381,12 @@
         //clear transcript button
         elements.clearButton.addEventListener('click', clearTranscript);
         
+        //back to rooms button
+        elements.backButton.addEventListener('click', leaveRoom);
+        
         document.addEventListener('click', (e) => {
-            //don't focus input when clicking clear button
-            if (e.target !== elements.clearButton) {
+            //don't focus input when clicking buttons
+            if (e.target !== elements.clearButton && e.target !== elements.backButton) {
                 elements.input.focus();
             }
         });
@@ -530,6 +394,12 @@
         //prevent backspace
         document.addEventListener('keydown', (e) =>{
             if (e.key === 'Backspace') e.preventDefault();
+        });
+        
+        //handle window unload to make sure user is removed
+        window.addEventListener('beforeunload', () => {
+            const userRef = ref(db, `${BASE_PATH}/${state.currentRoom}/users/${state.userId}`);
+            remove(userRef);
         });
         
         //initialize
