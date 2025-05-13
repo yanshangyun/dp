@@ -207,9 +207,10 @@
         }
     </style>
     <link rel="stylesheet" href="../style.css">
+    <script src="../script.js"></script>
 </head>
 <body>
-    <a href="../index.html" id="backButton">← Back</a>
+    <a onclick="goBack()" id="backButton" style="color:white">← Back</a>
     <div class="grid-container" id="grid-container">
         <div class="grid" id="unicode-grid"></div>
         <div id="info"></div>
@@ -714,7 +715,7 @@
 
             //set initial position
             editorContainer.style.left = '20px';
-            editorContainer.style.top = '20px';
+            editorContainer.style.bottom = '20px';
 
             //copy functionality
             const copyButton = document.querySelector('.copy-button');

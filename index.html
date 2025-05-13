@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nothing—Between</title>
     <style>
         @font-face{
             font-family:'Helvetica Neue';
@@ -14,9 +17,10 @@
             align-items:center;
             justify-content:center;
             height:100vh;
-            font-size:12px;
+            font-size:15px;
             overflow:hidden;
             background-color:white;
+            cursor:none;
         }
 
         ::selection{
@@ -25,7 +29,7 @@
         }
 
         :root{
-            --circle-radius:300px;
+            --slide-transition-duration:800ms;
         }
 
         .container{
@@ -35,6 +39,7 @@
             justify-content:center;
             align-items:center;
             flex-direction:column;
+            cursor:none;
         }
 
         @keyframes close{
@@ -62,121 +67,65 @@
         }
 
         .info{
-            position:absolute;
+            position:fixed;
             display:flex;
             flex-direction:column;
-            height:100vh;
             align-items:center;
-            justify-content:space-between;
+            justify-content:center;
+            top:0;
         }
 
         h1,
         h2,
         p{
-            font-size:12px;
             font-weight:normal;
             color:grey;
         }
         
         a{
             transform:skewY(0);
-            color:black;
-            transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+            color:blue;
+            transition:
+                padding 0.3s cubic-bezier(.24,0,.16,1),
+                box-shadow 0.3s cubic-bezier(.24,0,.16,1),
+                letter-spacing 0.6s cubic-bezier(.24,0,.16,1);
             /* line-height:0px; */
-            margin-top:-10px;
-            margin-bottom:20px;
+            pointer-events:auto;
+            z-index:200;
+            padding:5px 10px;
+            cursor:none;
+            box-shadow:0 0 0px rgba(0, 0, 0, 0.089);
+            border:0.5px blue dashed;
+            letter-spacing:0px;
+            white-space:nowrap;
+            font-family:'Times New Roman', Times, serif;
+            text-decoration:none;;
         }
         
         a:hover{
             /* font-style:italic; */
             /* letter-spacing:5px; */
             /* transform:skewY(-12deg); */
-            background-color:rgba(0, 0, 0, 0.220);
-            /* border:0.5px black dashed; */
-            color:black;
-            
+            background-color:white(0, 0, 0, 0.220);
+            border:0.5px blue dashed;
+            padding:5px 20px;
+            box-shadow:0 0 20px rgba(0, 0, 255, 0.181);
+            letter-spacing:5px;
         }
 
-        #currentTime{
-            transform:translateY(-100%);
+        a:active{
+            padding:0px 0px;
+            letter-spacing:-1px;
         }
 
-        #activeUsers{
-            position:fixed;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -100%);
+        .load-out{
             background-color:white;
-            transform-origin:center;
-            z-index:1000;
-            padding:5px;
-        }
-
-        @keyframes expand{
-            0%{
-                width:0;
-                height:0;
-            }
-            100%{
-                width:calc(var(--circle-radius) * 2);
-                height:calc(var(--circle-radius) * 2);
-            }
-        }
-
-        .project-wrapper{
-            position:fixed;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -50%);
-            /* border:0.5px solid grey; */
-            border-radius:100%;
-            width:0;  /* Start with 0 width */
-            height:0; /* Start with 0 height */
-            /* animation removed since we're doing it with JS */
-        }
-
-        .item{
-            position:absolute;
-            transform-origin:50% calc(var(--circle-radius) * -1);
-            display:flex;
-            flex-direction:column;
+            padding:100vh 100vw !important;
             align-items:center;
             justify-content:center;
-            left:50%;
-            top:50%;
-            width:auto;
-            height:auto;
-            padding:5px;
             text-align:center;
-        }
-
-        @keyframes split{
-            0%{
-                gap:-200px;
-            }
-            100%{
-                gap:var(--circle-radius);
-            }
-        }
-        .circle-wrapper{
-            position:fixed;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -50%);
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            flex-direction:row;
-            z-index:-1;
-            animation:split 2s cubic-bezier(.66,0,.2,1) forwards;
-        }
-
-        .circle{
-            height:calc(var(--circle-radius) * 2.5);
-            width:calc(var(--circle-radius) * 2.5);
-            border-radius:100%;
-            border:0.5px solid black;
-            flex-grow:1;
+            transition:all 1s cubic-bezier(.7,0,.19,1);
+            color:transparent;
         }
 
         #size{
@@ -190,6 +139,18 @@
             background-color:black;
         }
 
+        #check{
+            position:fixed;
+            width:100%;
+            height:100%;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:1000;
+            background-color:rgb(185, 185, 185);
+            color:black;
+        }
+
         @media only screen and (max-width: 1000px){
             #size{
                 display:flex;
@@ -199,70 +160,315 @@
                 display:none;
             }
         }
+
+        .slides-container{
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            z-index:1;
+            overflow:hidden;
+        }
+
+        .slide{
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            transform:translateY(100%); 
+            transition:transform var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1), opacity var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1);
+            /* pointer-events:none; */
+            overflow:hidden;
+            z-index:0;
+        }
+
+        .slide.active{
+            transform:translateY(0);
+            z-index:2;
+            pointer-events:auto;
+        }
+
+        .slide-content{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            height:100%;
+            width:100%;
+            padding-top:100px;
+            padding-bottom:100px;
+            box-sizing:border-box;
+        }
+
+        img{
+            position:relative;
+            height:80%;
+            width:auto;
+            object-fit:contain;
+        }
+
+        .image-wrapper{
+            display:flex;
+            flex-direction:row;
+            align-items:center;
+            justify-content:center;
+            height:30vw;
+            gap:20px;
+        }
+
+        .shape{
+            margin:20px;
+            transition:all 0.3s ease;
+        }
+
+        #slideIndicator{
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            color:grey;
+            /* border:0.5px solid white; */
+            padding:5px 10px;
+            border-radius:20px;
+            /* mix-blend-mode:exclusion; */
+        }
+
+        #activeUsers{
+            opacity:0;
+        }
+
+        .caption{
+            color:rgb(186, 186, 186);
+        }
     </style>
 </head>
 <body>
-    <!-- <div style="position:fixed; left:50%; height:100%; width:0.5px; background-color:black"></div> -->
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; opacity:0.5; mix-blend-mode:differences; pointer-events:none">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; left:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; right:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; bottom:10px; left:10px; width:15px; height:15px;">
+        <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; bottom:10px; right:10px; width:15px; height:15px;">
+    </div>
     <div id="size">
         <p>Too small!</p>
     </div>
-    <div class="title">
-        <h1>Nothing (</h1>
-        <h1>) Between</h1>
+    <div id="check">
+        <p>Are you still there?</p>
     </div>
-    <div class="circle-wrapper">
-        <div class="circle"></div>
-        <div class="circle"></div>
+    <div class="info">
+        <p id="currentTime"></p>
+        <p id="activeUsers">0</p>
     </div>
-    <div><p id="activeUsers">0</span></div>
-    <!-- <div class="info">
-        <p id="currentTime"></div>
-    </div> -->
-    <div class="container">
-        <div class="project-wrapper">
-            <!-- <p>March 4</p>
-            <a href="03-04/speech-text.html">Speech to Text</a> -->
-            <div class="item">
-                <p>March 31</p>
-                <!-- <a href="03-31/text-activate.html">Text "Activation"</a> -->
-                <a href="03-31/chat.html">Masked Typing</a>
+    
+    <div id="slideIndicator">Slide: 1/3</div>
+    
+    <div class="slides-container">
+        <div class="slide">
+            <div class="slide-content">
             </div>
-            <div class="item">
-                <p>April 8</p>
-                <a href="04-08/cursor.html">Live Cursor</a>
+        </div>
+        <div class="slide" style="background-color:black;">
+            <div class="slide-content" style="color:white">
+                <p>Nothing in Between</p>
+                <p style="opacity:0.5">
+                    Ryan Yan
+                    <br>
+                    <!-- Graphic Design Degree Project
+                    <br> -->
+                    2025
+                </p>
             </div>
-            <div class="item">
-                <p>April 15</p>
-                <a href="04-15/timeline.html">Timeline</a>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="images/play-wii.JPG" style="width:80vw;">
+                <p class="caption">My brother watching me play the Wii</p>
             </div>
-            <div class="item">
-                <p>April 24</p>
-                <a href="04-24/unicode.html">Unicode</a>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjIMveX1KGzzjX88EzEEAyQf0lD22UxakbBc0ur0cY9grNbA1veLh2QgkZQf-Fd-lxya-vkk_Dp6z7FqO65gDJXFu333ZihGdEkVhwJLRHeSgkyLRyc-Rjjru5dmJTm2meYOFdVQl0vPzEg/s1600/2012-07-29+16.07.50.jpg" style="width:80vw;">
+                <p class="caption">Multiplayer (local offline)<br>1 screen<br>1 room</p>
             </div>
-            <div class="item">
-                <p>April 27</p>
-                <a href="04-27/paths.html">Keyboard Paths</a>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://staticg.sportskeeda.com/editor/2022/11/8f142-16696972985594-1920.jpg">
+                    <img src="https://d2w9rnfcy7mm78.cloudfront.net/1655305/original_44f5d39d94011740dd476b9636a5bfc9.jpg?1517001161?bc=1">
+                </div>
+                <p class="caption">Multiplayer (LAN)<br>Multiple screens<br>1 room</p>
             </div>
-            <div class="item">
-                <p>April 29</p>
-                <a href="04-29/close.html">Close</a>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://cdn.staticneo.com/n/2/mario_kart_wii_room.jpg">
+                </div>
+                <p class="caption">Multiplayer (Online)<br>Multiple screens<br>1 "room"</p>
             </div>
-            <!-- <div class="item">
-                <p>April 30</p>
-                <a href="04-30/hyperlink.html">Hyperhyperlink</a>
-            </div> -->
-            <div class="item">
-                <p>May 1</p>
-                <a href="05-01/mapping.html">Mapping</a>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <p class="caption">Local to Online</p>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34720437/original_17a50931dd304892ebd435b248218414.jpg?1740173988?bc=0" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://pbs.twimg.com/media/GjVEwu4WwAA5AuT?format=jpg&name=large" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36552428/original_86dc33086a6f2786538a258422e1fc34.gif?1746736905?bc=0" style="width:20vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/6387696/original_ce3e44a20c5362eb513c8522da155815.jpg?1583533795?bc=0" style="width:30vw">
+            </div>
+        </div>
+        <div class="slide"> <!--keyboard-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719851/original_2c73922d1701a07b260fabd3aa512e64.jpg?1740172835?bc=0">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="04-24/unicode.html">Unicode Library →</a>
+            </div>
+        </div>
+        <div class="slide"> <!--font keyboards-->
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://play-lh.googleusercontent.com/ZtQ7QZQN2cIw1Kk3NZlOrtFyPvzL8cVz6MjblMuqIeo0yxFeGprJ52_w22TZnhBacw=w526-h296-rw">
+                    <img src="https://www.fkeyboard.app/images/fk_light.jpg">
+                    <img src="https://assets.hongkiat.com/uploads/android-keyboard-apps/Fonts.jpg">
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="05-01/mapping.html">Unicode Mapping →</a>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="04-27/paths.html">Keyboard Paths →</a>
+            </div>
+        </div>
+        <div class="slide"> <!--tennis-->
+            <div class="slide-content">
+                <img src="https://i.pinimg.com/originals/37/45/d0/3745d001d4977eb9d1c08063403eeb11.gif" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--ties-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35527189/original_c1d4b4fc5d67c4b62f4c3c0a0b228554.png?1742989597?bc=0" style="width:30vw">
+            </div>
+        </div>
+        <div class="slide"> <!--pictochat-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35845588/original_0cee0266f4a8b8e7d9698ea606cedbad.jpg?1744126094?bc=0">
+                <p class="caption">DS PictoChat</p>
+            </div>
+        </div>
+
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
+            </div>
+        </div>
+        <div class="slide"> <!--parking lot-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36588320/original_1ec645906a8e19fb7ef71f879b140df8.png?1746913824?bc=0" style="width:50vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="default.svg" style="transform:translate(2px, 9px); width:30px; height:30px; filter:invert(); opacity:0.2;">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://external-preview.redd.it/Kolb2FzAVrTN54OCavGJY8Ms0_Df4goLzTmlyVu0J18.jpg?width=640&crop=smart&auto=webp&s=15326b711820791a8e85d5c185da4b7273d71068">
+                    <img src="https://static.wixstatic.com/media/c99e14_6f301fe70cb14b42beec089545973ad2~mv2.gif">
+                </div>
+            </div>
+        </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center">
+                    <p style="margin-right:10px;">young</p>
+                    <div style="height:0.5px; width:60vw; background-color: black;"></div>
+                    <p style="margin-left:10px;">old</p>
+                </div>
+            </div>
+        </div> -->
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:10vw; width:10vw; border:0.5px solid black;">
+                    <p>group huddle!</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:left; width:80vw;">
+                    <p style="margin-right:10px;">line up! →</p>
+                </div>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="04-08/cursor.html">Live Cursor →</a>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="03-31/chat.html">Masked Typing →</a>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910780/original_bfbb69f857b1abd162426939de0df38e.jpg?1740862930?bc=0">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <a href="timeline/">Timeline →</a>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content" style="padding-top:0; padding-bottom:0;">
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
+                    <canvas id="drawingCanvas" style="border:0.5px dashed grey; background-color:white; pointer-events:auto; width:90%; height:80%;"></canvas>
+                    <div style="margin-top:20px;">
+                        <button id="clearCanvas" style="font-family:'Helvetica Neue'; border:0.5px dashed blue; background:none; padding:5px 20px; color:blue; pointer-events:auto;">Clear Canvas</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    
     <script type="module">
         //import
         import{ initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import{ getDatabase, ref, set, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        
-        //firebase
+        import{ getDatabase, ref, set, push, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+        //firebase config
         const firebaseConfig ={
             apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
             authDomain:"chat-f7267.firebaseapp.com",
@@ -273,195 +479,110 @@
             appId:"1:393364272511:web:7d40dfd804011f210b964a",
             measurementId:"G-X3PF8YJYT8"
         };
-        
-        //initialize
+    
+        //initialize firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        //setup
-        const BASE_PATH = 'homepage';
-        
+    
+        //app setup
+        const BASE_PATH = 'presentation';
         const userId = 'user_' + Math.random().toString(36).substr(2, 9);
         const username = userId.slice(-4);
-        
+    
+        //database references
         const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
         const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
         const connectedRef = ref(db, '.info/connected');
-
+        const slideStateRef = ref(db, `${BASE_PATH}/slideState`);
+        const cursorVisibilityRef = ref(db, `${BASE_PATH}/cursorVisibility`);
+    
+        //style & state variables
         const computedStyle = getComputedStyle(document.documentElement);
-        
-        //update position
+        const cursorElements ={};
+        let isAnimating = false;
+        let cursorsVisible = false;
+        const activeUsersElement = document.getElementById('activeUsers');
+    
+        // ** CURSOR **
+    
+        //create cursor element
+        function createCursorElement() {
+            const cursor = document.createElement('img');
+            cursor.src = 'default.svg';
+            cursor.style.position = 'fixed';
+            cursor.style.pointerEvents = 'none';
+            cursor.style.width = '30px';
+            cursor.style.height = '30px';
+            cursor.style.transform = 'translate(-30%, -30%)';
+            cursor.style.zIndex = '1000';
+            cursor.style.opacity = '1'; //all cursors start visible
+    
+            document.body.appendChild(cursor);
+            return cursor;
+        }
+    
+        //update cursor position
         function updateCursorPosition(event){
+            const xPercent = (event.clientX / window.innerWidth) * 100;
+            const yPercent = (event.clientY / window.innerHeight) * 100;
+            
             set(userCursorRef,{
-                x:event.clientX,
-                y:event.clientY,
+                xPercent:xPercent,
+                yPercent:yPercent,
                 username:username,
                 timestamp:Date.now(),
             });
         }
-        
-        //default data
+    
+        //set initial cursor data
         function setInitialCursor(){
             set(userCursorRef,{
-                x:0,
-                y:0,
+                xPercent:0,
+                yPercent:0,
                 username:username,
                 timestamp:Date.now(),
             });
         }
-        
-        const cursorElements ={};
-        let drawCursorLines;
-        
-        //track movement
-        onValue(connectedRef, (snapshot) =>{
-            if (snapshot.val() === true){
-                onDisconnect(userCursorRef).remove();
-                setInitialCursor();
-                document.addEventListener('mousemove', updateCursorPosition);
-            }
-        });
-
-        function animateCircle(){
-            const duration = 2000;
-            const startTime = Date.now();
-            const totalRotation = Math.PI * 2; //full rotation
-            const startRadius = 0;
-            const endRadius = parseInt(computedStyle.getPropertyValue('--circle-radius'));
-            
-            function animate(){
-                const elapsedTime = Date.now() - startTime;
-                const progress = Math.min(elapsedTime / duration, 1);
+    
+        //toggle cursor visibility
+        function cursorVisible() {
+            onValue(cursorVisibilityRef, (snapshot) => {
+                //toggle the current visibility state
+                const newVisibility = !(snapshot.val() || false);
+                set(cursorVisibilityRef, newVisibility);
                 
-                //easing
-                const easing = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
-                
-                const currentRotation = totalRotation * easing;
-                const currentRadius = startRadius + (endRadius - startRadius) * easing;
-                
-                document.documentElement.style.setProperty('--circle-radius', `${currentRadius}px`);
-                
-                arrangeItemsInCircle(currentRotation);
-                
-                if (progress < 1){
-                    requestAnimationFrame(animate);
+                //local toggle
+                if(activeUsersElement) {
+                    activeUsersElement.style.opacity = newVisibility ? '1' : '0';
                 }
-            }
-            
-            animate();
-        }
-
-        //arrange items in a circle
-        function arrangeItemsInCircle(rotationOffset = 0){
-            const items = document.querySelectorAll('.item');
-            const total = items.length;
-            
-            if (total === 0) return;
-                        
-            const radius = parseInt(computedStyle.getPropertyValue('--circle-radius'));
-            
-            const wrapper = document.querySelector('.project-wrapper');
-            const wrapperRect = wrapper.getBoundingClientRect();
-            const centerX = wrapperRect.width / 2;
-            const centerY = wrapperRect.height / 2;
-            
-            // Also update the wrapper size based on radius
-            wrapper.style.width = `${radius * 2}px`;
-            wrapper.style.height = `${radius * 2}px`;
-            
-            items.forEach((item, index) => {
-                const angle = (index / total) * Math.PI * 2 - (Math.PI / 2) + rotationOffset;
-                
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                
-                const itemRect = item.getBoundingClientRect();
-                const itemOffsetX = itemRect.width / 2;
-                const itemOffsetY = itemRect.height / 2;
-                
-                item.style.left = `${centerX + x - itemOffsetX}px`;
-                item.style.top = `${centerY + y - itemOffsetY}px`;
+            }, {
+                onlyOnce: true
             });
         }
-
-        //setup cursor lines
-        function setupCursorLines(){           
-            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            svg.id = 'cursorLinesSvg';
-            svg.style.position = 'fixed';
-            svg.style.top = '0';
-            svg.style.left = '0';
-            svg.style.width = '100%';
-            svg.style.height = '100%';
-            svg.style.pointerEvents = 'none';
-            document.body.appendChild(svg);
-            
-            const cursorLines ={};
-            
-            //set viewBox on resize
-            function resizeSvg(){
-                svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-                svg.setAttribute('width', window.innerWidth);
-                svg.setAttribute('height', window.innerHeight);
-                drawLines();
-            }
-            
-            function drawLines(){                
-                //get center point
-                const centerX = window.innerWidth / 2;
-                const centerY = window.innerHeight / 2;
+    
+        //handle cursor tracking in firebase, state synchronization
+        function syncCursorTracking(){
+            onValue(cursorVisibilityRef, (snapshot) => { //sync cursor visibility toggle
+                cursorsVisible = snapshot.val() !== null ? snapshot.val() : false; //default to hidden
                 
-                //remove lines for cursors that no longer exist
-                Object.keys(cursorLines).forEach(key =>{
-                    if (!cursorElements[key]){
-                        if(cursorLines[key] && cursorLines[key].parentNode){
-                            svg.removeChild(cursorLines[key]);
-                        }
-                        delete cursorLines[key];
+                //update all cursors based on visibility state
+                Object.entries(cursorElements).forEach(([key, cursor]) => {
+                    //skip current user's cursor - always visible
+                    if(key !== userId) {
+                        cursor.style.opacity = cursorsVisible ? '1' : '0';
                     }
                 });
-                
-                //update or create lines for each cursor
-                Object.entries(cursorElements).forEach(([key, cursor]) =>{
-                    if (!cursor || !cursor.style) return;
-                    
-                    //get cursor position
-                    const cursorX = parseInt(cursor.style.left, 10) + 0; //adjust for cursor offset
-                    const cursorY = parseInt(cursor.style.top, 10) + 0; //adjust for cursor offset
-                    
-                    if (isNaN(cursorX) || isNaN(cursorY)) return;
-                    
-                    //create or update line
-                    let line = cursorLines[key];
-                    if (!line){
-                        line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                        svg.appendChild(line);
-                        cursorLines[key] = line;
-                    }
-                    
-                    //set line attributes
-                    line.setAttribute('x1', centerX);
-                    line.setAttribute('y1', centerY);
-                    line.setAttribute('x2', cursorX);
-                    line.setAttribute('y2', cursorY);
-                    line.setAttribute('stroke','rgba(0, 0, 0, 0.220)');
-                    line.setAttribute('stroke-width', '1');
-                });
-            }
-            
-            window.addEventListener('resize', resizeSvg);
-            resizeSvg();
-            
-            //return the drawing function
-            return drawLines;
-        }
 
-        //handle cursor updates
-        function setupCursorTracking(){
-            onValue(cursorsRef, (snapshot) =>{
+                //someone else toggles
+                if(activeUsersElement) {
+                    activeUsersElement.style.opacity = cursorsVisible ? '1' : '0';
+                }
+            });
+            
+            onValue(cursorsRef, (snapshot) =>{ //sync cursor positoin
                 const data = snapshot.val() ||{};
                 
-                //remove cursors that no longer exist in the database
+                //remove cursors that no longer exist
                 Object.keys(cursorElements).forEach(key =>{
                     if (!data[key]){
                         if (cursorElements[key] && cursorElements[key].parentNode){
@@ -475,72 +596,530 @@
                 Object.entries(data).forEach(([key, value]) =>{
                     let cursor = cursorElements[key];
                     
-                    //create new cursor if it doesn't exist
                     if (!cursor){
-                        cursor = document.createElement('div');
+                        cursor = createCursorElement();
                         cursorElements[key] = cursor;
+                        
+                        //mark if this is the current user's cursor
+                        cursor.dataset.isCurrentUser = (key === userId);
+                        
+                        //apply visibility setting (only for other users)
+                        if(key !== userId) {
+                            cursor.style.opacity = cursorsVisible ? '1' : '0';
+                        }
                     }
                     
-                    //update cursor position
-                    if (value.x !== undefined && value.y !== undefined){
-                        cursor.style.left = `${value.x}px`;
-                        cursor.style.top = `${value.y}px`;
+                    if (value.xPercent !== undefined && value.yPercent !== undefined){
+                        const xPixel = (value.xPercent / 100) * window.innerWidth;
+                        const yPixel = (value.yPercent / 100) * window.innerHeight;
+                        cursor.style.left = `${xPixel}px`;
+                        cursor.style.top = `${yPixel}px`;
+                        
+                        //store percentages in dataset for resize handling
+                        cursor.dataset.xPercent = value.xPercent;
+                        cursor.dataset.yPercent = value.yPercent;
                     }
                     
                     cursor.dataset.timestamp = value.timestamp;
                 });
-
-                document.getElementById('activeUsers').textContent = Object.keys(cursorElements).length;
-                
-                //draw lines after cursor positions are updated
-                if (drawCursorLines){
-                    drawCursorLines();
-                }
+    
+                //update active users count
+                activeUsersElement.textContent = Object.keys(cursorElements).length;
             });
         }
-
-        //remove idle cursors
-        function setupIdleCursorCleanup(){
+    
+        //setup idle cursor cleanup
+        function cursorCleanup(){
+            const checkDiv = document.getElementById('check');
+            let userActive = true;
+            let idleTimer;
+            const idleTime = 30000; //timeout
+            
+            //reset idle timer on any user activity
+            function resetIdleTimer() {
+                clearTimeout(idleTimer);
+                if(!userActive) {
+                    userActive = true;
+                    checkDiv.style.display = 'none';
+                }
+                
+                idleTimer = setTimeout(() => {
+                    userActive = false;
+                    checkDiv.style.display = 'flex';
+                }, idleTime);
+            }
+            
+            //reset timer on mouse move and key press
+            document.addEventListener('mousemove', resetIdleTimer);
+            document.addEventListener('keydown', resetIdleTimer);
+            
+            //initial timer start
+            resetIdleTimer();
+            
+            //remove idle cursors
             function removeIdleCursors(){
                 const now = Date.now();
                 Object.entries(cursorElements).forEach(([key, element]) =>{
                     const timestamp = parseInt(element.dataset.timestamp, 10);
-                    if (!timestamp || now - timestamp > 30000){ //30 seconds
+                    if (!timestamp || now - timestamp > idleTime){
                         element.remove();
                         delete cursorElements[key];
                         remove(ref(db, `${BASE_PATH}/cursors/${key}`));
                     }
                 });
             }
-
-            setInterval(removeIdleCursors, 10000);
+    
+            setInterval(removeIdleCursors, idleTime);
+        }
+    
+        function cursorVisibleToggle() {
+            document.addEventListener('keydown', (event) => {
+                //check if both Enter and Shift are pressed
+                if(event.key === 'Enter' && event.shiftKey) {
+                    cursorVisible();
+                    event.preventDefault(); //prevent default behavior
+                }
+            });
+        }
+    
+        // ** SLIDES **
+    
+        //update slide indicator
+        function updateSlideIndicator(currentIndex, totalSlides) {
+            const indicator = document.getElementById('slideIndicator');
+            indicator.textContent = `${currentIndex + 1}`;
+        }
+    
+        //show a specific slide
+        function showSlide(newIndex, direction) {
+            if (isAnimating) {
+                //prevent concurrent animations
+                return;
+            }
+            
+            const slides = document.querySelectorAll('.slide');
+            
+            //find current active slide
+            const currentIndex = [...slides].findIndex(slide => 
+                slide.classList.contains('active'));
+            
+            //if no slide is active yet, show the first one
+            if (currentIndex === -1) {
+                slides[newIndex].style.transform = 'translateY(0)';
+                slides[newIndex].classList.add('active');
+                updateSlideIndicator(newIndex, slides.length);
+                return;
+            }
+            
+            //get current and new slide elements
+            const currentSlide = slides[currentIndex];
+            const newSlide = slides[newIndex];
+            
+            //skip if trying to show the same slide
+            if (currentIndex === newIndex) return;
+            
+            //lock animations
+            isAnimating = true;
+            
+            //reset all non-active slides to their starting positions
+            slides.forEach(slide => {
+                if (slide !== currentSlide && !slide.classList.contains('active')) {
+                    slide.style.transition = 'none';
+                    if (direction === 'next') {
+                        slide.style.transform = 'translateY(100%)'; //position below
+                    } else {
+                        slide.style.transform = 'translateY(-100%)'; //position above
+                    }
+                    //force reflow
+                    void slide.offsetWidth;
+                    //restore transition
+                    slide.style.transition = '';
+                }
+            });
+            
+            //position the new slide
+            if (direction === 'next') {
+                newSlide.style.transform = 'translateY(100%)'; //start below
+            } else {
+                newSlide.style.transform = 'translateY(-100%)'; //start above
+            }
+            
+            //force reflow
+            void newSlide.offsetWidth;
+            
+            //start animation
+            newSlide.classList.add('active');
+            
+            //move current slide out
+            if (direction === 'next') {
+                currentSlide.style.transform = 'translateY(-100%)'; //exit to top
+            } else {
+                currentSlide.style.transform = 'translateY(100%)'; //exit to bottom
+            }
+            
+            //move new slide in
+            newSlide.style.transform = 'translateY(0)';
+            
+            const transitionDuration = parseFloat(computedStyle.getPropertyValue('--slide-transition-duration')) || 800;
+            
+            //after animation completes
+            setTimeout(() => {
+                //clean up
+                currentSlide.classList.remove('active');
+                
+                //update indicator
+                updateSlideIndicator(newIndex, slides.length);
+                
+                //release animation lock
+                isAnimating = false;
+            }, transitionDuration + 50); //add a small buffer
+        }
+    
+        //change to next or previous slide
+        function changeSlide(direction) {
+            if (isAnimating) return;
+            
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { 
+                    currentSlideIndex: 0, 
+                    totalSlides: document.querySelectorAll('.slide').length,
+                    direction: 'next' 
+                };
+                
+                let newIndex = data.currentSlideIndex + direction;
+                
+                //clamp index to valid range
+                if (newIndex < 0) newIndex = 0;
+                if (newIndex >= data.totalSlides) newIndex = data.totalSlides - 1;
+                
+                //only update if actually changing slides
+                if (newIndex !== data.currentSlideIndex) {
+                    const directionName = direction > 0 ? 'next' : 'prev';
+                    
+                    //update state in firebase
+                    set(slideStateRef, {
+                        currentSlideIndex: newIndex,
+                        totalSlides: data.totalSlides,
+                        direction: directionName
+                    });
+                }
+            }, {
+                onlyOnce: true
+            });
+        }
+    
+        //initialize slide state
+        function initializeSlideState() {
+            const totalSlides = document.querySelectorAll('.slide').length;
+    
+            //reset
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+                slide.style.transform = 'translateY(100%)';
+            });
+    
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { currentSlideIndex: 0 }; //default to 0 if no data
+                const initialIndex = data.currentSlideIndex;
+    
+                //set initial state
+                set(slideStateRef, {
+                    currentSlideIndex: initialIndex,
+                    totalSlides: totalSlides,
+                    direction: 'next'
+                });
+    
+                //update indicator
+                updateSlideIndicator(initialIndex, totalSlides);
+                showSlide(initialIndex, 'next'); //show initial slide
+            }, {
+                onlyOnce: true
+            });
+        }
+    
+        //setup slide navigation with keyboard
+        function setupKeyboardNavigation() {
+            let lastKeyPressTime = 0;
+            const MIN_KEY_DELAY = 100;
+    
+            //arrow keys
+            document.addEventListener('keydown', (event) => {
+                const now = Date.now();
+    
+                if (now - lastKeyPressTime < MIN_KEY_DELAY) {
+                    return;
+                }
+    
+                //shift + arrow
+                if (event.shiftKey) {
+                    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                        changeSlide(1);
+                        lastKeyPressTime = now;
+                        event.preventDefault();
+                    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                        changeSlide(-1);
+                        lastKeyPressTime = now;
+                        event.preventDefault();
+                    }
+                }
+            });
+        }
+    
+        //listen for slide changes
+        function syncSlideChanges() {
+            onValue(slideStateRef, (snapshot) => {
+                const data = snapshot.val() || { 
+                    currentSlideIndex: 0, 
+                    totalSlides: document.querySelectorAll('.slide').length, 
+                    direction: 'next' 
+                };
+                
+                showSlide(data.currentSlideIndex, data.direction);
+            });
         }
 
-        //update current time
-        // function setupTimeDisplay(){
-        //     function updateTime(){
-        //         document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
-        //     }
+        // ** CANVAS **
 
-        //     updateTime();
-        //     setInterval(updateTime, 1000);
-        // }
-
-        //initialize everything when DOM is loaded
-        window.addEventListener('DOMContentLoaded', () =>{            
-            //setup all components
-            drawCursorLines = setupCursorLines();
-            setupCursorTracking();
-            setupIdleCursorCleanup();
-            // setupTimeDisplay();
+        function setupCanvas(){
+            const canvas = document.getElementById('drawingCanvas');
+            const clearButton = document.getElementById('clearCanvas');
             
-            // Start with animation instead of just arranging items
-            setTimeout(animateCircle, 100); // Slight delay to ensure DOM is ready
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
             
-            //handle window resize for responsive layout
-            window.addEventListener('resize', function(){
-                arrangeItemsInCircle(0); // Reset to default position on resize
+            const drawingRef = ref(db, `${BASE_PATH}/drawing`);
+            const linesRef = ref(db, `${BASE_PATH}/drawing/lines`);
+            
+            function resizeCanvas(){
+                canvas.width = window.innerWidth*0.9;
+                canvas.height = window.innerHeight*0.8;
+                
+                // Redraw from stored data after resize
+                syncCanvas();
+            }
+            
+            //sync draw
+            function syncCanvas(){
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Listen for data changes
+                onValue(linesRef, (snapshot) => {
+                    const lines = snapshot.val() || {};
+                    
+                    // Redraw all lines
+                    Object.values(lines).forEach(line => {
+                        const startX = line.startX * canvas.width;
+                        const startY = line.startY * canvas.height;
+                        const endX = line.endX * canvas.width;
+                        const endY = line.endY * canvas.height;
+                        
+                        drawLine(startX, startY, endX, endY);
+                    });
+                });
+            }
+            
+            function getCanvasCoordinates(e){
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+                
+                return [
+                    clientX - rect.left,
+                    clientY - rect.top
+                ];
+            }
+            
+            function drawLine(x1, y1, x2, y2){
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // Drawing functions
+            function startDrawing(e){
+                isDrawing = true;
+                [lastX, lastY] = getCanvasCoordinates(e);
+            }
+            
+            function draw(e){
+                if(!isDrawing) return;
+                
+                const [currentX, currentY] = getCanvasCoordinates(e);
+                
+                // Draw line locally
+                drawLine(lastX, lastY, currentX, currentY);
+                
+                try {
+                    // Save to firebase - use the properly initialized linesRef
+                    const newLineRef = push(ref(db, `${BASE_PATH}/drawing/lines`));
+                    const lineKey = newLineRef.key;
+                    
+                    const lineData = {
+                        startX: lastX / canvas.width,  // Store as percentage for device independence
+                        startY: lastY / canvas.height,
+                        endX: currentX / canvas.width,
+                        endY: currentY / canvas.height,
+                        timestamp: Date.now(),
+                        userId: userId
+                    };
+                    
+                    set(ref(db, `${BASE_PATH}/drawing/lines/${lineKey}`), lineData);
+                } catch (error) {
+                    console.error("Error saving to Firebase:", error);
+                }
+                
+                // Update last position
+                [lastX, lastY] = [currentX, currentY];
+            }
+            
+            function stopDrawing(){
+                isDrawing = false;
+            }
+            
+            // Clear the canvas
+            function clearCanvas(){
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                set(ref(db, `${BASE_PATH}/drawing/lines`), null);
+            }
+            
+            // Remove custom style overrides to keep the cursor:none styling
+            // canvas.style.cursor = 'crosshair';
+            // canvas.style.pointerEvents = 'auto';
+            
+            // Keep these - we need pointer events but not custom cursor style
+            canvas.style.pointerEvents = 'auto';
+            clearButton.style.pointerEvents = 'auto';
+            
+            // Event listeners for drawing with mouse - IMPORTANT: Do not stop propagation 
+            // so cursor tracking still works
+            canvas.addEventListener('mousedown', (e) => {
+                // e.stopPropagation(); - Remove this to allow cursor tracking
+                startDrawing(e);
             });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                // e.stopPropagation(); - Remove this to allow cursor tracking
+                draw(e);
+            });
+            
+            canvas.addEventListener('mouseup', (e) => {
+                // e.stopPropagation(); - Remove this to allow cursor tracking
+                stopDrawing();
+            });
+            
+            canvas.addEventListener('mouseout', (e) => {
+                // e.stopPropagation(); - Remove this to allow cursor tracking
+                stopDrawing();
+            });
+            
+            // Touch support - we still need stopPropagation for touch to prevent scrolling
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                startDrawing(e);
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                draw(e);
+            });
+            
+            canvas.addEventListener('touchend', (e) => {
+                e.stopPropagation();
+                stopDrawing();
+            });
+            
+            // Listen for clear button clicks
+            clearButton.addEventListener('click', clearCanvas);            
+            
+            // Initialize canvas size
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Initial draw from firebase
+            syncCanvas();
+        }
+    
+        // ** UTILITY **
+
+        //setup time display
+        function currentTime(){
+            function updateTime(){
+                document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+            }
+    
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+    
+        //delay links
+        function linkDelay() {
+            document.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const href = this.getAttribute('href');
+                    const target = this.getAttribute('target') || '_self';
+                    
+                    this.classList.add('load-out');
+                    
+                    setTimeout(() => {
+                        window.open(href, target);
+                    }, 1000);
+                });
+            });
+        }
+    
+        //initialize cursor connection
+        function initializeCursors() {
+            onValue(connectedRef, (snapshot) =>{
+                if (snapshot.val() === true){
+                    onDisconnect(userCursorRef).remove();
+                    setInitialCursor();
+                    document.addEventListener('mousemove', updateCursorPosition);
+                }
+            });
+        }
+    
+        //handle window resize
+        window.addEventListener('resize', () =>{
+            Object.entries(cursorElements).forEach(([key, cursor]) =>{
+                if (cursor.dataset.xPercent !== undefined && cursor.dataset.yPercent !== undefined){
+                    const xPixel = (parseFloat(cursor.dataset.xPercent) / 100) * window.innerWidth;
+                    const yPixel = (parseFloat(cursor.dataset.yPercent) / 100) * window.innerHeight;
+                    cursor.style.left = `${xPixel}px`;
+                    cursor.style.top = `${yPixel}px`;
+                }
+            });
+        });
+    
+        //initialize
+        window.addEventListener('DOMContentLoaded', () =>{
+            //set cursor visibility to false (other users hidden by default)
+            set(cursorVisibilityRef, false);
+            
+            initializeCursors();
+            syncCursorTracking();
+            cursorCleanup();
+            cursorVisibleToggle();
+            
+            currentTime();
+            linkDelay();
+            
+            initializeSlideState();
+            setupKeyboardNavigation();
+            syncSlideChanges();
+
+            setupCanvas();
+            
+            //show the first slide initially
+            showSlide(0, 'next');
         });
     </script>
 </body>

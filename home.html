@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        @font-face{
+            font-family:'Helvetica Neue';
+            src:url('HelveticaNeue-Medium.woff2') format('woff2');
+        }
+
+        body{
+            font-family:'Helvetica Neue';
+            position:relative;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            font-size:12px;
+            overflow:hidden;
+            background-color:white;
+        }
+
+        ::selection{
+            background-color:rgb(214, 214, 214);
+            color:black;
+        }
+
+        :root{
+            --circle-radius:300px;
+        }
+
+        .container{
+            width:100%;
+            height:100%;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-direction:column;
+        }
+
+        @keyframes close{
+            0%{
+                left:-20%;
+                right:-20%;
+            }
+            100%{
+                left:0;
+                right:0;
+            }
+        }
+
+        .title{
+            position:fixed;
+            left:-20%;
+            right:-20%;
+            top:50%;
+            transform:translateY(-50%);
+            padding:10px;
+            display:flex;
+            justify-content:space-between;
+            animation:close 2s cubic-bezier(0.1, 0, 0.1, 1) forwards;
+            animation-delay:1s;
+        }
+
+        .info{
+            position:absolute;
+            display:flex;
+            flex-direction:column;
+            height:100vh;
+            align-items:center;
+            justify-content:space-between;
+        }
+
+        h1,
+        h2,
+        p{
+            font-size:12px;
+            font-weight:normal;
+            color:grey;
+        }
+        
+        a{
+            transform:skewY(0);
+            color:black;
+            transition:all 0.3s cubic-bezier(0.1, 0, 0.1, 1);
+            /* line-height:0px; */
+            margin-top:-10px;
+            margin-bottom:20px;
+        }
+        
+        a:hover{
+            /* font-style:italic; */
+            /* letter-spacing:5px; */
+            /* transform:skewY(-12deg); */
+            background-color:rgba(0, 0, 0, 0.220);
+            /* border:0.5px black dashed; */
+            color:black;
+            
+        }
+
+        #currentTime{
+            transform:translateY(-100%);
+        }
+
+        #activeUsers{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -100%);
+            background-color:white;
+            transform-origin:center;
+            z-index:1000;
+            padding:5px;
+        }
+
+        @keyframes expand{
+            0%{
+                width:0;
+                height:0;
+            }
+            100%{
+                width:calc(var(--circle-radius) * 2);
+                height:calc(var(--circle-radius) * 2);
+            }
+        }
+
+        .project-wrapper{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            /* border:0.5px solid grey; */
+            border-radius:100%;
+            width:0;  /* Start with 0 width */
+            height:0; /* Start with 0 height */
+            /* animation removed since we're doing it with JS */
+        }
+
+        .item{
+            position:absolute;
+            transform-origin:50% calc(var(--circle-radius) * -1);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            left:50%;
+            top:50%;
+            width:auto;
+            height:auto;
+            padding:5px;
+            text-align:center;
+        }
+
+        @keyframes split{
+            0%{
+                gap:-200px;
+            }
+            100%{
+                gap:var(--circle-radius);
+            }
+        }
+        .circle-wrapper{
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            flex-direction:row;
+            z-index:-1;
+            animation:split 2s cubic-bezier(.66,0,.2,1) forwards;
+        }
+
+        .circle{
+            height:calc(var(--circle-radius) * 2.5);
+            width:calc(var(--circle-radius) * 2.5);
+            border-radius:100%;
+            border:0.5px solid black;
+            flex-grow:1;
+        }
+
+        #size{
+            position:fixed;
+            width:100%;
+            height:100%;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:1000;
+            background-color:black;
+        }
+
+        @media only screen and (max-width: 1000px){
+            #size{
+                display:flex;
+            }
+
+            #activeUsers{
+                display:none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- <div style="position:fixed; left:50%; height:100%; width:0.5px; background-color:black"></div> -->
+    <div id="size">
+        <p>Too small!</p>
+    </div>
+    <div class="title">
+        <h1>Nothing (</h1>
+        <h1>) Between</h1>
+    </div>
+    <div class="circle-wrapper">
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+    <div><p id="activeUsers">0</span></div>
+    <!-- <div class="info">
+        <p id="currentTime"></div>
+    </div> -->
+    <div class="container">
+        <div class="project-wrapper">
+            <!-- <p>March 4</p>
+            <a href="03-04/speech-text.html">Speech to Text</a> -->
+            <div class="item">
+                <p>March 31</p>
+                <!-- <a href="03-31/text-activate.html">Text "Activation"</a> -->
+                <a href="03-31/chat.html">Masked Typing</a>
+            </div>
+            <div class="item">
+                <p>April 8</p>
+                <a href="04-08/cursor.html">Live Cursor</a>
+            </div>
+            <div class="item">
+                <p>April 15</p>
+                <a href="04-15/timeline.html">Timeline</a>
+            </div>
+            <div class="item">
+                <p>April 24</p>
+                <a href="04-24/unicode.html">Unicode</a>
+            </div>
+            <div class="item">
+                <p>April 27</p>
+                <a href="04-27/paths.html">Keyboard Paths</a>
+            </div>
+            <div class="item">
+                <p>April 29</p>
+                <a href="04-29/close.html">Close</a>
+            </div>
+            <!-- <div class="item">
+                <p>April 30</p>
+                <a href="04-30/hyperlink.html">Hyperhyperlink</a>
+            </div> -->
+            <div class="item">
+                <p>May 1</p>
+                <a href="05-01/mapping.html">Mapping</a>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        //import
+        import{ initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import{ getDatabase, ref, set, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        
+        //firebase
+        const firebaseConfig ={
+            apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain:"chat-f7267.firebaseapp.com",
+            databaseURL:"https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId:"chat-f7267",
+            storageBucket:"chat-f7267.firebasestorage.app",
+            messagingSenderId:"393364272511",
+            appId:"1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId:"G-X3PF8YJYT8"
+        };
+        
+        //initialize
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        //setup
+        const BASE_PATH = 'homepage';
+        
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        const username = userId.slice(-4);
+        
+        const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
+        const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
+        const connectedRef = ref(db, '.info/connected');
+
+        const computedStyle = getComputedStyle(document.documentElement);
+        
+        //update position
+        function updateCursorPosition(event){
+            set(userCursorRef,{
+                x:event.clientX,
+                y:event.clientY,
+                username:username,
+                timestamp:Date.now(),
+            });
+        }
+        
+        //default data
+        function setInitialCursor(){
+            set(userCursorRef,{
+                x:0,
+                y:0,
+                username:username,
+                timestamp:Date.now(),
+            });
+        }
+        
+        const cursorElements ={};
+        let drawCursorLines;
+        
+        //track movement
+        onValue(connectedRef, (snapshot) =>{
+            if (snapshot.val() === true){
+                onDisconnect(userCursorRef).remove();
+                setInitialCursor();
+                document.addEventListener('mousemove', updateCursorPosition);
+            }
+        });
+
+        function animateCircle(){
+            const duration = 2000;
+            const startTime = Date.now();
+            const totalRotation = Math.PI * 2; //full rotation
+            const startRadius = 0;
+            const endRadius = parseInt(computedStyle.getPropertyValue('--circle-radius'));
+            
+            function animate(){
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+                
+                //easing
+                const easing = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+                
+                const currentRotation = totalRotation * easing;
+                const currentRadius = startRadius + (endRadius - startRadius) * easing;
+                
+                document.documentElement.style.setProperty('--circle-radius', `${currentRadius}px`);
+                
+                arrangeItemsInCircle(currentRotation);
+                
+                if (progress < 1){
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+
+        //arrange items in a circle
+        function arrangeItemsInCircle(rotationOffset = 0){
+            const items = document.querySelectorAll('.item');
+            const total = items.length;
+            
+            if (total === 0) return;
+                        
+            const radius = parseInt(computedStyle.getPropertyValue('--circle-radius'));
+            
+            const wrapper = document.querySelector('.project-wrapper');
+            const wrapperRect = wrapper.getBoundingClientRect();
+            const centerX = wrapperRect.width / 2;
+            const centerY = wrapperRect.height / 2;
+            
+            // Also update the wrapper size based on radius
+            wrapper.style.width = `${radius * 2}px`;
+            wrapper.style.height = `${radius * 2}px`;
+            
+            items.forEach((item, index) => {
+                const angle = (index / total) * Math.PI * 2 - (Math.PI / 2) + rotationOffset;
+                
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                
+                const itemRect = item.getBoundingClientRect();
+                const itemOffsetX = itemRect.width / 2;
+                const itemOffsetY = itemRect.height / 2;
+                
+                item.style.left = `${centerX + x - itemOffsetX}px`;
+                item.style.top = `${centerY + y - itemOffsetY}px`;
+            });
+        }
+
+        //setup cursor lines
+        function setupCursorLines(){           
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.id = 'cursorLinesSvg';
+            svg.style.position = 'fixed';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.pointerEvents = 'none';
+            document.body.appendChild(svg);
+            
+            const cursorLines ={};
+            
+            //set viewBox on resize
+            function resizeSvg(){
+                svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+                svg.setAttribute('width', window.innerWidth);
+                svg.setAttribute('height', window.innerHeight);
+                drawLines();
+            }
+            
+            function drawLines(){                
+                //get center point
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                //remove lines for cursors that no longer exist
+                Object.keys(cursorLines).forEach(key =>{
+                    if (!cursorElements[key]){
+                        if(cursorLines[key] && cursorLines[key].parentNode){
+                            svg.removeChild(cursorLines[key]);
+                        }
+                        delete cursorLines[key];
+                    }
+                });
+                
+                //update or create lines for each cursor
+                Object.entries(cursorElements).forEach(([key, cursor]) =>{
+                    if (!cursor || !cursor.style) return;
+                    
+                    //get cursor position
+                    const cursorX = parseInt(cursor.style.left, 10) + 0; //adjust for cursor offset
+                    const cursorY = parseInt(cursor.style.top, 10) + 0; //adjust for cursor offset
+                    
+                    if (isNaN(cursorX) || isNaN(cursorY)) return;
+                    
+                    //create or update line
+                    let line = cursorLines[key];
+                    if (!line){
+                        line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        svg.appendChild(line);
+                        cursorLines[key] = line;
+                    }
+                    
+                    //set line attributes
+                    line.setAttribute('x1', centerX);
+                    line.setAttribute('y1', centerY);
+                    line.setAttribute('x2', cursorX);
+                    line.setAttribute('y2', cursorY);
+                    line.setAttribute('stroke','rgba(0, 0, 0, 0.220)');
+                    line.setAttribute('stroke-width', '1');
+                });
+            }
+            
+            window.addEventListener('resize', resizeSvg);
+            resizeSvg();
+            
+            //return the drawing function
+            return drawLines;
+        }
+
+        //handle cursor updates
+        function setupCursorTracking(){
+            onValue(cursorsRef, (snapshot) =>{
+                const data = snapshot.val() ||{};
+                
+                //remove cursors that no longer exist in the database
+                Object.keys(cursorElements).forEach(key =>{
+                    if (!data[key]){
+                        if (cursorElements[key] && cursorElements[key].parentNode){
+                            cursorElements[key].remove();
+                        }
+                        delete cursorElements[key];
+                    }
+                });
+                
+                //update or create cursors
+                Object.entries(data).forEach(([key, value]) =>{
+                    let cursor = cursorElements[key];
+                    
+                    //create new cursor if it doesn't exist
+                    if (!cursor){
+                        cursor = document.createElement('div');
+                        cursorElements[key] = cursor;
+                    }
+                    
+                    //update cursor position
+                    if (value.x !== undefined && value.y !== undefined){
+                        cursor.style.left = `${value.x}px`;
+                        cursor.style.top = `${value.y}px`;
+                    }
+                    
+                    cursor.dataset.timestamp = value.timestamp;
+                });
+
+                document.getElementById('activeUsers').textContent = Object.keys(cursorElements).length;
+                
+                //draw lines after cursor positions are updated
+                if (drawCursorLines){
+                    drawCursorLines();
+                }
+            });
+        }
+
+        //remove idle cursors
+        function setupIdleCursorCleanup(){
+            function removeIdleCursors(){
+                const now = Date.now();
+                Object.entries(cursorElements).forEach(([key, element]) =>{
+                    const timestamp = parseInt(element.dataset.timestamp, 10);
+                    if (!timestamp || now - timestamp > 30000){ //30 seconds
+                        element.remove();
+                        delete cursorElements[key];
+                        remove(ref(db, `${BASE_PATH}/cursors/${key}`));
+                    }
+                });
+            }
+
+            setInterval(removeIdleCursors, 10000);
+        }
+
+        //update current time
+        // function setupTimeDisplay(){
+        //     function updateTime(){
+        //         document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        //     }
+
+        //     updateTime();
+        //     setInterval(updateTime, 1000);
+        // }
+
+        //initialize everything when DOM is loaded
+        window.addEventListener('DOMContentLoaded', () =>{            
+            //setup all components
+            drawCursorLines = setupCursorLines();
+            setupCursorTracking();
+            setupIdleCursorCleanup();
+            // setupTimeDisplay();
+            
+            // Start with animation instead of just arranging items
+            setTimeout(animateCircle, 100); // Slight delay to ensure DOM is ready
+            
+            //handle window resize for responsive layout
+            window.addEventListener('resize', function(){
+                arrangeItemsInCircle(0); // Reset to default position on resize
+            });
+        });
+    </script>
+</body>
+</html>
