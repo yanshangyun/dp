@@ -94,12 +94,13 @@
             z-index:200;
             padding:5px 10px;
             cursor:none;
-            box-shadow:0 0 0px rgba(0, 0, 0, 0.089);
+            box-shadow:0 0 0px white;
             border:0.5px blue dashed;
             letter-spacing:0px;
             white-space:nowrap;
             font-family:'Times New Roman', Times, serif;
             text-decoration:none;;
+            background-color:white;
         }
         
         a:hover{
@@ -109,7 +110,7 @@
             background-color:white(0, 0, 0, 0.220);
             border:0.5px blue dashed;
             padding:5px 20px;
-            box-shadow:0 0 20px rgba(0, 0, 255, 0.181);
+            box-shadow:0 0 20px white;
             letter-spacing:5px;
         }
 
@@ -246,10 +247,14 @@
         .caption{
             color:rgb(186, 186, 186);
         }
+
+        .link{
+            background-color:blue;
+        }
     </style>
 </head>
 <body>
-    <div style="position:fixed; top:0; left:0; width:100%; height:100%; opacity:0.5; mix-blend-mode:differences; pointer-events:none">
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; opacity:0.5; pointer-events:none">
         <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; left:10px; width:15px; height:15px;">
         <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; top:10px; right:10px; width:15px; height:15px;">
         <img src="https://pngimg.com/d/plus_PNG19.png" style="position:absolute; bottom:10px; left:10px; width:15px; height:15px;">
@@ -258,9 +263,9 @@
     <div id="size">
         <p>Too small!</p>
     </div>
-    <div id="check">
+    <!-- <div id="check">
         <p>Are you still there?</p>
-    </div>
+    </div> -->
     <div class="info">
         <p id="currentTime"></p>
         <p id="activeUsers">0</p>
@@ -271,7 +276,13 @@
     <div class="slides-container">
         <div class="slide">
             <div class="slide-content">
-                <p>nothingbetween.space</p>
+                <p>
+                    Ensure you are using Google Chrome.
+                    <br>
+                    Turn on Do not disturb.
+                    <br>
+                    Please do not touch the keyboard unless prompted.
+                </p>
             </div>
         </div>
         <div class="slide" style="background-color:black;">
@@ -280,8 +291,8 @@
                 <p style="opacity:0.5">
                     Ryan Yan
                     <br>
-                    <!-- Graphic Design Degree Project
-                    <br> -->
+                    Graphic Design Degree Project
+                    <br>
                     2025
                 </p>
             </div>
@@ -346,7 +357,7 @@
             </div>
         </div>
         <div class="slide">
-            <div class="slide-content">
+            <div class="slide-content link">
                 <a href="unicode-library/">Unicode Library →</a>
             </div>
         </div>
@@ -360,12 +371,17 @@
             </div>
         </div>
         <div class="slide">
-            <div class="slide-content">
+            <div class="slide-content link">
                 <a href="mapping/">Unicode Mapping →</a>
             </div>
         </div>
-        <div class="slide">
+        <div class="slide"> <!--swipe typing-->
             <div class="slide-content">
+                <img src="https://i.redd.it/2pcv3hivq1la1.gif">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content link">
                 <a href="paths/">Keyboard Paths →</a>
             </div>
         </div>
@@ -385,15 +401,14 @@
                 <p class="caption">DS PictoChat</p>
             </div>
         </div>
-
-        <div class="slide">
-            <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
-            </div>
-        </div>
         <div class="slide"> <!--parking lot-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/36588320/original_1ec645906a8e19fb7ef71f879b140df8.png?1746913824?bc=0" style="width:50vw">
+            </div>
+        </div>
+        <div class="slide"> <!--converge-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
             </div>
         </div>
         <div class="slide">
@@ -433,12 +448,12 @@
             </div>
         </div>
         <div class="slide">
-            <div class="slide-content">
+            <div class="slide-content link">
                 <a href="live-cursor/">Live Cursor →</a>
             </div>
         </div>
         <div class="slide">
-            <div class="slide-content">
+            <div class="slide-content link">
                 <a href="masked/">Masked Typing →</a>
             </div>
         </div>
@@ -447,8 +462,33 @@
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910780/original_bfbb69f857b1abd162426939de0df38e.jpg?1740862930?bc=0">
             </div>
         </div>
-        <div class="slide">
+        <div class="slide"> <!--turn taking-->
             <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/2111774/original_468ec8f007223cdd9295bd0c24759c00.gif?1525059693?bc=1" style="width:20vw">
+            </div>
+        </div>
+        <div class="slide"> <!--pokemon-->
+            <div class="slide-content">
+                <img src="images/Battle.webp" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--problematic turn taking-->
+            <div class="slide-content">
+                <img src="https://ars.els-cdn.com/content/image/1-s2.0-S088523082030111X-gr8.jpg" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--group chat-->
+            <div class="slide-content">
+                <img src="https://www.tapsmart.com/wp-content/uploads/2016/08/group-imessages-1.png" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--transitional-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36138544/original_e75b5ec8f8f92733ca596e4c1b838fe6.png?1745247689?bc=0" style="width:60vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content link">
                 <a href="timeline/">Timeline →</a>
             </div>
         </div>
@@ -644,7 +684,6 @@
     
         //setup idle cursor cleanup
         function cursorCleanup(){
-            const checkDiv = document.getElementById('check');
             let userActive = true;
             let idleTimer;
             const idleTime = 30000; //timeout
@@ -654,12 +693,10 @@
                 clearTimeout(idleTimer);
                 if(!userActive) {
                     userActive = true;
-                    checkDiv.style.display = 'none';
                 }
                 
                 idleTimer = setTimeout(() => {
                     userActive = false;
-                    checkDiv.style.display = 'flex';
                 }, idleTime);
             }
             

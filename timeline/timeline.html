@@ -160,38 +160,64 @@
                 //clear and rebuild transcript
                 elements.transcriptArea.innerHTML = '';
                 
-                let currentLine = null;
-                let lastUserId = null;
+                // Track active lines for each user
+                let userLines = {};
+                let userLastTimestamps = {}; // Track last timestamp for each user
                 let lastTimestamp = null;
                 
                 entries.forEach(entry =>{
-                    //create new line if needed
-                    if (entry.type === 'userCount' || !currentLine || entry.userId !== lastUserId){
-                        currentLine = document.createElement('div');
-                        currentLine.className = 'transcript-line';
-                        elements.transcriptArea.appendChild(currentLine);
+                    const TIMEOUT_THRESHOLD = 2000; // 2 seconds in milliseconds
+                    
+                    // For userCount type, always create a new separate line
+                    if (entry.type === 'userCount'){
+                        const countLine = document.createElement('div');
+                        countLine.className = 'transcript-line';
+                        const span = document.createElement('span');
+                        span.className = 'user-count';
+                        span.textContent = entry.char;
+                        countLine.appendChild(span);
+                        elements.transcriptArea.appendChild(countLine);
+                        return; // Skip the rest of processing for this entry
                     }
                     
-                    //add spacing
-                    if (lastTimestamp && entry.type !== 'userCount'){
-                        const timeDiff = entry.timestamp - lastTimestamp;
+                    // Check if we need a new line for this user
+                    let needNewLine = false;
+                    
+                    // No line for this user yet
+                    if (!userLines[entry.userId]) {
+                        needNewLine = true;
+                    }
+                    // Same user but with >2s pause
+                    else if (userLastTimestamps[entry.userId] && 
+                            entry.timestamp - userLastTimestamps[entry.userId] > TIMEOUT_THRESHOLD) {
+                        needNewLine = true;
+                    }
+                    
+                    // Create a new line if needed
+                    if (needNewLine){
+                        const line = document.createElement('div');
+                        line.className = 'transcript-line';
+                        line.dataset.userId = entry.userId;
+                        elements.transcriptArea.appendChild(line);
+                        userLines[entry.userId] = line;
+                    }
+                    
+                    const currentLine = userLines[entry.userId];
+                    
+                    // Add spacing based on time difference if needed
+                    if (userLastTimestamps[entry.userId]){
+                        const timeDiff = entry.timestamp - userLastTimestamps[entry.userId];
                         const spaces = Math.floor(Math.abs(timeDiff) / 100);
                         if (spaces > 0){
                             currentLine.appendChild(document.createTextNode(' '.repeat(spaces)));
                         }
                     }
                     
-                    //add content
-                    if (entry.type === 'userCount'){
-                        const span = document.createElement('span');
-                        span.className = 'user-count';
-                        span.textContent = entry.char;
-                        currentLine.appendChild(span);
-                    }else{
-                        currentLine.appendChild(document.createTextNode(entry.char));
-                    }
+                    // Add the character
+                    currentLine.appendChild(document.createTextNode(entry.char));
                     
-                    lastUserId = entry.userId;
+                    // Update the user's last timestamp
+                    userLastTimestamps[entry.userId] = entry.timestamp;
                     lastTimestamp = entry.timestamp;
                 });
                 
@@ -330,7 +356,7 @@
             }
         }
         
-        //animation loop without framerate limit
+        //animation loop
         function animate(){
             
             //update time
