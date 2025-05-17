@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>live cursor</title>
+  <title>(live cursor)</title>
   <style>
     html, body{
       margin:0;
@@ -75,6 +75,10 @@
   <div id="info">
     <p>press ESC to realign</p>
     <p>press ENTER to clear text</p>
+    <label style="display:flex; align-items:center; gap:5px;">
+      <input type="checkbox" id="colorToggle" checked />
+      color
+    </label>
   </div>
   <p id="activeUsers">0</p>
 
@@ -83,7 +87,7 @@
   <script type="module">
     //import
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue, onDisconnect, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     
     //firebase
     const app = initializeApp({
@@ -105,12 +109,16 @@
     const userColor = "#" + Math.floor(Math.random()*16777215).toString(16);
     const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
     const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
+    const settingsRef = `${BASE_PATH}/settings`;
+
+    const colorToggle = document.getElementById("colorToggle");
     
     //data tracking
     const cursors = {};
     const charElements = {};
     const physicsChains = {};
     let currentText = "";
+    let showColor = true;
     let mouseX = 0, mouseY = 0;
     const maxTextLength = 30;
     
@@ -132,7 +140,7 @@
     Render.run(render);
     Runner.run(Runner.create(), engine);
     
-    // Create a physics chain for text
+    //create a physics chain for text
     function createTextChain(userId, text, x, y) {
       const previousChain = physicsChains[userId];
       let previousBodies = [];
@@ -252,7 +260,6 @@
         }
         
         if (data.realigned === true) {
-          // This is the key fix - properly handle realignment from other users
           realignText(id, data.x, data.y);
         }
       }
@@ -269,11 +276,17 @@
         const charEl = document.createElement("span");
         charEl.className = "text-char";
         charEl.textContent = text[i];
-        charEl.style.color = color || "#FF0000";
+        charEl.style.color = showColor ? (color || "#FF0000") : "#000000";
         document.body.appendChild(charEl);
         charElements[id].push(charEl);
       }
     }
+
+    //color toggle    
+    colorToggle.addEventListener("change", () => {
+      const newValue = colorToggle.checked;
+      update(ref(db, settingsRef), { showColor: newValue });
+    });
     
     //cleanup
     function clearUser(id) {
@@ -462,6 +475,23 @@
     }
     
     onDisconnect(userCursorRef).remove();
+
+    onValue(ref(db, settingsRef + "/showColor"), (snapshot) => {
+      const value = snapshot.val();
+      if (typeof value === "boolean") {
+        showColor = value;
+        colorToggle.checked = value;
+        Object.keys(charElements).forEach(id => {
+          updateTextDisplay(id, physicsChains[id]?.text || "", id === userId ? userColor : (cursors[id]?.style.background || "#000000"));
+        });
+      }
+    });
+
+    get(ref(db, settingsRef + "/showColor")).then((snapshot) => {
+      if (!snapshot.exists()) {
+        update(ref(db, settingsRef), { showColor: true });
+      }
+    });
 
     window.textWasRealigned = false;
     window.userId = userId;

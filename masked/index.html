@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>(masked typing)</title>
     <style>
         *{
             box-sizing:border-box;
@@ -13,8 +13,9 @@
             font-family:Arial, Helvetica, sans-serif;
             margin:0;
             height:100vh;
-            width:100vw;
+            width:100%;
             overflow-x:hidden;
+            overflow-y:hidden;
             font-size:12px;
         }
 
@@ -23,32 +24,38 @@
             color:white;
         }
 
+        ::-webkit-scrollbar{
+            width:0;
+        }
+
         #container{
             display:flex;
             flex-direction:column;
             width:100%;
-            height:100%;
-            max-width:600px;
+            height:100vh;
             margin:0 auto;
-            padding:20px;
             align-items:center;
             justify-content:center;
-            overflow-y:hidden;
-            overflow-x:hidden;
+            margin-bottom:5vh;
         }
 
         #chatWrapper{
-            width:100vw;
+            width:100%;
+            max-height:80vh;
+            overflow-y:overlay;
+            overflow-x:hidden;
             display:flex;
             flex-direction:column;
             align-items:center;
-            justify-content:center;
+            justify-content:flex-end;
+            position:relative;
+            left:0;
+            right:0;
         }
 
         #chatArea{
-            flex:1;
-            overflow-y:auto;
-            width:100vw;
+            width:100%;
+            height:auto;
             display:flex;
             flex-direction:column;
             gap:0px;
@@ -119,7 +126,7 @@
             word-wrap:break-word;
             font-size:12px;
             text-align:center;
-            padding:0 5px;
+            /* padding:0 5px; */
             width:fit-content;
             overflow:hidden;
             transition:all 0.5s cubic-bezier(.4,0,.2,1);
@@ -131,11 +138,11 @@
             -webkit-background-clip:text;
             background-clip:text;
             color:transparent;
-            margin:20px 0 10px 0;
+            /* margin:20px 0 10px 0; */
         }
         
         .input-container{
-            margin:10px auto;
+            margin:20px auto;
             border:1px solid black;
             background-color:#fff;
             text-align:center;
@@ -158,13 +165,19 @@
         #inputField::placeholder{
             color:black;
         }
+
+        #inputField:focus{
+            box-shadow:0 0 10px rgba(0, 0, 0, 0.249);
+        }
         
-        .buttons-wrapper{
+        .button-wrapper{
             position:fixed;
             bottom:10px;
             display:flex;
             padding:5px;
             z-index:2;
+            left:50%;
+            transform:translateX(-50%);
         }
 
         button{
@@ -198,7 +211,7 @@
                 <input type="text" id="inputField" placeholder="" autocomplete="off">
             </div>
         </div>
-        <div class="buttons-wrapper">
+        <div class="button-wrapper">
             <button onclick="clearChat()" onmouseover="clearInfo()" onmouseout="resetClearButton()" id="clearButton">×</button>
         </div>
     </div>

@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nothing—Between</title>
+    <title>nothing(⸻)between</title>
+    <link rel="icon" type="image/x-icon" href="images/cursor.png">
     <style>
         @font-face{
             font-family:'Helvetica Neue';
             src:url('HelveticaNeue-Medium.woff2') format('woff2');
+        }
+
+        *{
+            cursor:none;
         }
 
         body{
@@ -88,6 +93,8 @@
             transition:
                 padding 0.3s cubic-bezier(.24,0,.16,1),
                 box-shadow 0.3s cubic-bezier(.24,0,.16,1),
+                color 0.2s ease,
+                background-color 0.2s ease,
                 letter-spacing 0.6s cubic-bezier(.24,0,.16,1);
             /* line-height:0px; */
             pointer-events:auto;
@@ -107,10 +114,11 @@
             /* font-style:italic; */
             /* letter-spacing:5px; */
             /* transform:skewY(-12deg); */
-            background-color:white(0, 0, 0, 0.220);
             border:0.5px blue dashed;
+            color:white;
+            background-color:blue;
             padding:5px 20px;
-            box-shadow:0 0 20px white;
+            box-shadow:0 0 20px rgba(0, 0, 255, 0.212);
             letter-spacing:5px;
         }
 
@@ -120,13 +128,14 @@
         }
 
         .load-out{
-            background-color:white;
+            background-color:white !important;
             padding:100vh 100vw !important;
             align-items:center;
             justify-content:center;
             text-align:center;
             transition:all 1s cubic-bezier(.7,0,.19,1);
             color:transparent;
+            opacity:0;
         }
 
         #size{
@@ -212,6 +221,7 @@
             height:80%;
             width:auto;
             object-fit:contain;
+            pointer-events:none;
         }
 
         .image-wrapper{
@@ -249,7 +259,7 @@
         }
 
         .link{
-            background-color:blue;
+            /* background-image:linear-gradient(to right, blue, transparent 30%, transparent 70%, blue) */
         }
     </style>
 </head>
@@ -271,7 +281,7 @@
         <p id="activeUsers">0</p>
     </div>
     
-    <div id="slideIndicator">Slide: 1/3</div>
+    <div id="slideIndicator"></div>
     
     <div class="slides-container">
         <div class="slide">
@@ -341,19 +351,26 @@
                 <img src="https://pbs.twimg.com/media/GjVEwu4WwAA5AuT?format=jpg&name=large" style="width:40vw">
             </div>
         </div>
-        <div class="slide">
-            <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36552428/original_86dc33086a6f2786538a258422e1fc34.gif?1746736905?bc=0" style="width:20vw">
+        <div class="slide" style="background-color:black"> <!--PART 1-->
+            <div class="slide-content link">
+                <p>Part 1</p>
+                <p>Me<span style="letter-spacing:-2px"> ⸺⸺⸺⸺⸺⸺⸺⸺ </span>Machine</p>
             </div>
         </div>
-        <div class="slide">
+        <div class="slide"> <!--google-->
             <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/6387696/original_ce3e44a20c5362eb513c8522da155815.jpg?1583533795?bc=0" style="width:30vw">
+                <div class="image-wrapper">
+                    <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719877/original_4b720fd587023b9857c2d9845659456b.jpg?1740172899?bc=0">
+                    <!-- <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719872/original_e6f7ab8c69baa308a36602d961b84d32.jpg?1740172887?bc=0"> -->
+                    <img src="https://pbs.twimg.com/media/DzaHoTFVAAMf0DK.jpg">
+                </div>
+                <p class="caption">"A New Proposal from the Google Japanese Input Team"</p>
             </div>
         </div>
-        <div class="slide"> <!--keyboard-->
+        <div class="slide"> <!--kanji keyboard-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719851/original_2c73922d1701a07b260fabd3aa512e64.jpg?1740172835?bc=0">
+                <p class="caption">ALPS CP10SJ550A Kanji Keyboard</p>
             </div>
         </div>
         <div class="slide">
@@ -368,6 +385,7 @@
                     <img src="https://www.fkeyboard.app/images/fk_light.jpg">
                     <img src="https://assets.hongkiat.com/uploads/android-keyboard-apps/Fonts.jpg">
                 </div>
+                <p class="caption">"Font" keyboards</p>
             </div>
         </div>
         <div class="slide">
@@ -383,6 +401,22 @@
         <div class="slide">
             <div class="slide-content link">
                 <a href="paths/">Keyboard Paths →</a>
+            </div>
+        </div>
+        <div class="slide" style="background-color:black"> <!--PART 2-->
+            <div class="slide-content link">
+                <p>Part 2</p>
+                <p>Me<span style="letter-spacing:-2px"> ⸺⸺⸺⸺⸺⸺⸺⸺ </span>You</p>
+            </div>
+        </div>
+        <div class="slide"> <!--between computers-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36552428/original_86dc33086a6f2786538a258422e1fc34.gif?1746736905?bc=0" style="width:20vw">
+            </div>
+        </div>
+        <div class="slide"> <!--heart-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/6387696/original_ce3e44a20c5362eb513c8522da155815.jpg?1583533795?bc=0" style="width:30vw">
             </div>
         </div>
         <div class="slide"> <!--tennis-->
@@ -448,8 +482,18 @@
             </div>
         </div>
         <div class="slide">
+            <div class="slide-content">
+                <img src="images/cursor-chat.gif" style="width:80vw">
+            </div>
+        </div>
+        <div class="slide">
             <div class="slide-content link">
                 <a href="live-cursor/">Live Cursor →</a>
+            </div>
+        </div>
+        <div class="slide"> <!--typing indicator-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36550771/original_1093a78db095b8b2c0a03e8846480275.gif?1746732034?bc=0" style="width:20vw; filter:brightness(1.05)">
             </div>
         </div>
         <div class="slide">
@@ -1153,7 +1197,6 @@
         //initialize
         window.addEventListener('DOMContentLoaded', () =>{
             //set cursor visibility to false (other users hidden by default)
-            set(cursorVisibilityRef, false);
             
             initializeCursors();
             syncCursorTracking();
