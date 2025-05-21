@@ -15,12 +15,12 @@
             margin:20px auto;
             padding:20px;
             overflow:hidden;
-            background-color:rgb(246, 246, 246);
+            background-color:white;
         }
 
         ::selection{
-            background-color:white;
-            mix-blend-mode:difference;
+            background-color:rgb(211, 211, 211);
+            color:rgba(0, 0, 0, 0.36);
         }
         
         .container{
@@ -39,7 +39,7 @@
             text-align:center;
             justify-content:center;
             align-items:center;
-            font-family:arial;
+            font-family:monospace;
             resize:none;
             border:none;
             outline:none;
@@ -62,7 +62,39 @@
             line-height:90px;
             text-align:center;
             color:rgb(211, 211, 211);
-            text-shadow:0 0 15px rgba(0, 0, 0, 0.185);
+            /* text-shadow:0 0 15px rgba(0, 0, 0, 0.185); */
+        }
+
+        .unicode-char{
+            position:relative;
+            cursor:help;
+            transition:padding 0.2s ease;
+        }
+
+        .unicode-char:hover{
+            color:rgba(0, 0, 0, 0.36);
+            /* border:1px dashed black; */
+            padding:0 10px;
+            /* text-shadow:0 0 5px rgba(0, 0, 0, 0.208); */
+        }
+
+        .unicode-char:hover::after{
+            font-family:monospace;
+            content:attr(data-style);
+            position:absolute;
+            bottom:0px;
+            left:50%;
+            transform:translate(-50%, 65%);
+            color:rgba(0, 0, 0, 0.36);
+            padding:5px 10px;
+            border-radius:4px;
+            font-size:12px;
+            white-space:nowrap;
+            z-index:100;
+            pointer-events:none;
+            height:auto;
+            width:fit-content;
+            text-transform:uppercase;
         }
     </style>
     <link rel="stylesheet" href="../style.css">
@@ -185,7 +217,7 @@
             
             //convert input text to random style
             function convertText(){
-                const text = inputText.value; // Get value from textarea
+                const text = inputText.value;
                 if(text.trim() === "") {
                     outputText.innerHTML = "";
                     return;
@@ -196,14 +228,18 @@
                 const convertedLines = lines.map(line => {
                     return line.split('').map(char => {
                         const randomStyle = selectRandomStyle();
+                        let convertedChar;
                         
                         if (uppercase[randomStyle] && uppercase[randomStyle][char]) {
-                            return uppercase[randomStyle][char];
+                            convertedChar = uppercase[randomStyle][char];
                         } else if (lowercase[randomStyle] && lowercase[randomStyle][char]) {
-                            return lowercase[randomStyle][char];
+                            convertedChar = lowercase[randomStyle][char];
                         } else {
-                            return char; // keep non-alphabetic characters as-is
+                            convertedChar = char; //keep non-alphabetic characters as-is
                         }
+                        
+                        //wrap each character in a span with class and data attribute
+                        return `<span class="unicode-char" data-style="${randomStyle}">${convertedChar}</span>`;
                     }).join('');
                 });
                 

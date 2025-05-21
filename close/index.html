@@ -3,24 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>(close)</title>
     <style>
         *{
             box-sizing:border-box;
         }
 
         body, html{
-            font-family:'Times New Roman', Times, serif;
+            font-family:tim;
             margin:0;
             height:100vh;
             width:100vw;
             overflow:hidden;
-            font-size:12px;
+            font-size:15px;
+            text-transform:full-width;
+            background-color:black;
+            color:white;
+            text-shadow:0 0 5px white;
         }
 
         ::selection{
-            background-color:black;
-            color:white;
+            background-color:white;
+            color:black;
         }
 
         #container{
@@ -77,7 +81,6 @@
 
         .message{
             word-wrap:break-word;
-            font-size:12px;
             text-align:center;
             padding:0 5px;
             width:fit-content;
@@ -131,10 +134,10 @@
             width:100vw;
             background: linear-gradient(
                 to bottom,
-                rgba(255, 255, 255, 0),
-                rgb(255, 255, 255) 25%,
-                rgb(255, 255, 255) 75%,
-                rgba(255, 255, 255, 0)
+                rgba(0, 0, 0, 0),
+                rgb(0, 0, 0) 25%,
+                rgb(0, 0, 0) 75%,
+                rgba(0, 0, 0, 0)
             );
             height:200px;
         }
@@ -142,12 +145,13 @@
         #inputField{
             text-align:center;
             width:100vw;
-            font-size:12px;
             border:none;
             outline:none;
             font-family:'Times New Roman', Times, serif;
             padding:0 5px;
             background-color:transparent;
+            color:white;
+            font-size:15px;
         }
         
         .buttons-wrapper{
@@ -159,15 +163,15 @@
         }
 
         button{
-            background-color:white;
-            border:1px solid black;
+            background-color:transparent;
+            color:white;
+            border:1px dashed white;
             width:auto;
             height:auto;
             display:flex;
             align-items:center;
             justify-content:center;
             cursor:pointer;
-            font-size:12px;
             padding:2px 8px;
         }
         
@@ -175,14 +179,21 @@
             background-color:black;
             color:white;
         }
+
+        #status{
+            position:fixed;
+            top:10px;
+            right:10px;
+            z-index:10;
+        }
     </style>
     <link rel="stylesheet" href="../style.css">
     <script src="../script.js"></script>
 </head>
 <body>
-    <a onclick="goBack()" id="backButton">← Back</a>
-    <div style="position:fixed; top:0; background:linear-gradient(to bottom,rgb(255, 255, 255) 50%,rgba(255, 255, 255, 0) 100%); width:100%; height:100px; z-index:1"></div>
-    <div style="position:fixed; bottom:0; background:linear-gradient(to top,rgb(255, 255, 255) 50%,rgba(255, 255, 255, 0) 100%); width:100%; height:100px; z-index:1"></div>
+    <a onclick="goBack()" id="backButton" style="color:white">← Back</a>
+    <div style="position:fixed; top:0; background:linear-gradient(to bottom,rgb(0, 0, 0) 50%,rgba(0, 0, 0, 0) 100%); width:100%; height:100px; z-index:1"></div>
+    <div style="position:fixed; bottom:0; background:linear-gradient(to top,rgb(0, 0, 0) 50%,rgba(0, 0, 0, 0) 100%); width:100%; height:100px; z-index:1"></div>
     <div id="container">
         <div class="chat1-container">
             <div id="chat1"></div>
@@ -197,10 +208,11 @@
     <div class="buttons-wrapper">
         <button id="clearButton">×</button>
     </div>
+    <div id="status"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, remove, set, get, onDisconnect } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, onChildRemoved, remove, set, get, onDisconnect } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
     
         const firebaseConfig = {
             apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
@@ -223,6 +235,7 @@
         const CHAT2_REF = ref(db, `${BASE_PATH}/chat2`);
         const TYPING_REF = ref(db, `${BASE_PATH}/typing`);
         const USERS_REF = ref(db, `${BASE_PATH}/users`);
+        const SPECTATORS_REF = ref(db, `${BASE_PATH}/spectators`);
         
         // DOM elements
         const inputField = document.getElementById("inputField");
@@ -231,9 +244,11 @@
         const chat1Container = document.querySelector(".chat1-container");
         const chat2Container = document.querySelector(".chat2-container");
         const clearButton = document.getElementById("clearButton");
+        const statusElement = document.getElementById("status");
         
         // User management
         let USER_ID = null;
+        let SPECTATOR_ID = null;
         
         // Initialize transforms for custom scrolling
         function initializeTransforms() {
@@ -361,21 +376,20 @@
         
         // Auto-resize input field
         inputField.addEventListener("input", function() {
-
             // Update typing status
-            if (this.value.trim() !== "" && USER_ID) {
+            if (this.value.trim() !== "" && USER_ID && USER_ID !== "spectator") {
                 set(ref(db, `${BASE_PATH}/typing/${USER_ID}`), {
                     USER_ID: USER_ID,
                     timestamp: Date.now()
                 });
-            } else if (USER_ID) {
+            } else if (USER_ID && USER_ID !== "spectator") {
                 remove(ref(db, `${BASE_PATH}/typing/${USER_ID}`));
             }
         });
         
         // Send message handler
         inputField.addEventListener("keypress", function(event) {
-            if (event.key === "Enter" && !event.shiftKey && this.value.trim() !== "" && USER_ID) {
+            if (event.key === "Enter" && !event.shiftKey && this.value.trim() !== "" && USER_ID && USER_ID !== "spectator") {
                 event.preventDefault();
                 
                 // Determine which chat to send to based on user ID
@@ -463,6 +477,86 @@
             });
         }
         
+        // Set up spectator session
+        function setupSpectatorSession() {
+            // Disable input field for spectators
+            inputField.disabled = true;
+            inputField.placeholder = "You are an eavesdropper";
+            
+            // Add to spectator count
+            SPECTATOR_ID = push(SPECTATORS_REF, { 
+                timestamp: Date.now() 
+            }).key;
+            
+            // Clean up when spectator leaves
+            onDisconnect(ref(db, `${BASE_PATH}/spectators/${SPECTATOR_ID}`)).remove();
+            
+            // Set up watchers for active users
+            setupUserWatchers();
+            
+            //message listener
+            setupMessageListeners();
+        }
+        
+        // Watch for changes in active users
+        function setupUserWatchers() {
+            // Watch for removals
+            onChildRemoved(USERS_REF, (snapshot) => {
+                if (USER_ID === "spectator") {
+                    checkForAvailableSpot();
+                }
+            });
+        }
+        
+        // Check if a spot is available and assign it
+        async function checkForAvailableSpot() {
+            if (USER_ID !== "spectator") return;
+            
+            try {
+                const user1Snapshot = await get(ref(db, `${BASE_PATH}/users/1`));
+                if (!user1Snapshot.exists()) {
+                    // Remove spectator status
+                    if (SPECTATOR_ID) {
+                        remove(ref(db, `${BASE_PATH}/spectators/${SPECTATOR_ID}`));
+                        SPECTATOR_ID = null;
+                    }
+                    
+                    USER_ID = "1";
+                    const userRef = ref(db, `${BASE_PATH}/users/1`);
+                    await set(userRef, { active: true, lastActive: Date.now() });
+                    
+                    //automatic cleanup
+                    onDisconnect(userRef).remove();
+                    onDisconnect(ref(db, `${BASE_PATH}/typing/1`)).remove();
+                    
+                    setupUserSession();
+                    return;
+                }
+                
+                const user2Snapshot = await get(ref(db, `${BASE_PATH}/users/2`));
+                if (!user2Snapshot.exists()) {
+                    // Remove spectator status
+                    if (SPECTATOR_ID) {
+                        remove(ref(db, `${BASE_PATH}/spectators/${SPECTATOR_ID}`));
+                        SPECTATOR_ID = null;
+                    }
+                    
+                    USER_ID = "2";
+                    const userRef = ref(db, `${BASE_PATH}/users/2`);
+                    await set(userRef, { active: true, lastActive: Date.now() });
+                    
+                    //automatic cleanup
+                    onDisconnect(userRef).remove();
+                    onDisconnect(ref(db, `${BASE_PATH}/typing/2`)).remove();
+                    
+                    setupUserSession();
+                    return;
+                }
+            } catch (error) {
+                console.error("Error checking for available spot:", error);
+            }
+        }
+        
         //assign user id
         async function assignUserId() {
             try {
@@ -496,8 +590,9 @@
                     return;
                 }
                 
-                //if both are taken
-                document.body.innerHTML = "<h1 style='text-align:center;margin-top:100px;'>Chat room is full (2/2 users). Please try again later.</h1>";
+                //if both are taken, assign as spectator
+                USER_ID = "spectator";
+                setupSpectatorSession();
                 
             } catch (error) {
                 console.error("Error assigning user ID:", error);
@@ -515,7 +610,7 @@
             //check if still active
             const userRef = ref(db, `${BASE_PATH}/users/${USER_ID}`);
             const heartbeat = setInterval(() => {
-                if (USER_ID) {
+                if (USER_ID && USER_ID !== "spectator") {
                     set(userRef, { active: true, lastActive: Date.now() });
                 } else {
                     clearInterval(heartbeat);
@@ -528,9 +623,11 @@
         
         //clean up on leave
         window.addEventListener("beforeunload", () => {
-            if (USER_ID) {
+            if (USER_ID && USER_ID !== "spectator") {
                 remove(ref(db, `${BASE_PATH}/users/${USER_ID}`));
                 remove(ref(db, `${BASE_PATH}/typing/${USER_ID}`));
+            } else if (SPECTATOR_ID) {
+                remove(ref(db, `${BASE_PATH}/spectators/${SPECTATOR_ID}`));
             }
         });
         

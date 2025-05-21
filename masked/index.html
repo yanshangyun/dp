@@ -230,7 +230,7 @@
             appId: "1:393364272511:web:7d40dfd804011f210b964a"
         };
 
-        const BASE_PATH = 'standard';
+        const BASE_PATH = 'masked';
     
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
@@ -238,6 +238,7 @@
         const CHAT_REF = ref(db, `${BASE_PATH}/messages`);
         const TYPING_REF = ref(db, `${BASE_PATH}/typing`);
         const TRANSFORMS_REF = ref(db, `${BASE_PATH}/transforms`);
+        const CLEAR_SIGNAL_REF = ref(db, `${BASE_PATH}/clearSignal`);
         
         //generate a unique user ID for this session
         const USER_ID = "user_" + Math.random().toString(36).substr(2, 9);
@@ -249,9 +250,42 @@
         const inputField = document.getElementById("inputField");
         const chatArea = document.getElementById("chatArea");
 
+        //listen for clear signals
+        onValue(CLEAR_SIGNAL_REF, (snapshot) => {
+            const clearSignal = snapshot.val();
+            if (clearSignal && clearSignal.timestamp) {
+                chatArea.innerHTML = "";
+            }
+        });
+
         //unicode randomizer function for letter transformations
         function getRandomUnicodeChar() {
-            //define ranges of interesting Unicode characters
+            if (Math.random() < 0.8) { //80%
+                //whitespace characters
+                const whitespaceChars = [
+                    '\u0020', //normal space
+                    '\u00A0', //non-breaking space
+                    '\u2000', //en quad
+                    '\u2001', //em quad
+                    '\u2002', //en space
+                    '\u2003', //em space
+                    '\u2004', //three-per-em space
+                    '\u2005', //four-per-em space
+                    '\u2006', //six-per-em space
+                    '\u2007', //figure space
+                    '\u2008', //punctuation space
+                    '\u2009', //thin space
+                    '\u200A', //hair space
+                    '\u200B', //zero-width space
+                    '\u202F', //narrow no-break space
+                    '\u205F'  //medium mathematical space
+                ];
+                
+                //return random whitespace character
+                return whitespaceChars[Math.floor(Math.random() * whitespaceChars.length)];
+            }
+            
+            //unicode characters
             const ranges = [
                 { start: 0x2500, end: 0x257F }, //box drawing
                 { start: 0x2580, end: 0x259F }, //block elements
@@ -301,7 +335,6 @@
                         original: originalChar
                     });
                     
-                    //set timeout to revert back after 3 seconds
                     setTimeout(() => {
                         //revert back locally
                         this.textContent = originalChar;
@@ -525,7 +558,17 @@
 
         //clear chat
         window.clearChat = function() {
+            //clear local display
             chatArea.innerHTML = "";
+            
+            //first add a clear signal to the database
+            const clearSignalRef = ref(db, `${BASE_PATH}/clearSignal`);
+            set(clearSignalRef, {
+                timestamp: Date.now(),
+                clearedBy: USER_ID
+            });
+            
+            //then remove messages and transforms
             remove(CHAT_REF);
             remove(TRANSFORMS_REF);
         };

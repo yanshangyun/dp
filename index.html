@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>nothing(⸻)between</title>
+    <title>nothing (     ) between</title>
     <link rel="icon" type="image/x-icon" href="images/cursor.png">
     <style>
         @font-face{
@@ -96,7 +96,6 @@
                 color 0.2s ease,
                 background-color 0.2s ease,
                 letter-spacing 0.6s cubic-bezier(.24,0,.16,1);
-            /* line-height:0px; */
             pointer-events:auto;
             z-index:200;
             padding:5px 10px;
@@ -105,7 +104,7 @@
             border:0.5px blue dashed;
             letter-spacing:0px;
             white-space:nowrap;
-            font-family:'Times New Roman', Times, serif;
+            /* font-family:'Times New Roman', Times, serif; */
             text-decoration:none;;
             background-color:white;
         }
@@ -191,7 +190,9 @@
             align-items:center;
             justify-content:center;
             transform:translateY(100%); 
-            transition:transform var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1), opacity var(--slide-transition-duration) cubic-bezier(0.33, 1, 0.68, 1);
+            transition:
+                transform var(--slide-transition-duration) cubic-bezier(.36,0,.26,1),
+                opacity var(--slide-transition-duration) cubic-bezier(.36,0,.26,1);
             /* pointer-events:none; */
             overflow:hidden;
             z-index:0;
@@ -233,11 +234,6 @@
             gap:20px;
         }
 
-        .shape{
-            margin:20px;
-            transition:all 0.3s ease;
-        }
-
         #slideIndicator{
             position:fixed;
             bottom:20px;
@@ -250,6 +246,11 @@
             /* mix-blend-mode:exclusion; */
         }
 
+        #info{
+            z-index:100;
+            mix-blend-mode:difference;
+        }
+
         #activeUsers{
             opacity:0;
         }
@@ -260,6 +261,11 @@
 
         .link{
             /* background-image:linear-gradient(to right, blue, transparent 30%, transparent 70%, blue) */
+        }
+
+        h1{
+            font-size:100px;
+            opacity:0.5;
         }
     </style>
 </head>
@@ -276,22 +282,29 @@
     <!-- <div id="check">
         <p>Are you still there?</p>
     </div> -->
-    <div class="info">
+    <div class="info" style="z-index:100">
         <p id="currentTime"></p>
         <p id="activeUsers">0</p>
     </div>
     
-    <div id="slideIndicator"></div>
+    <div id="slideIndicator" style="z-index:100"></div>
     
     <div class="slides-container">
         <div class="slide">
             <div class="slide-content">
                 <p>
-                    Ensure you are using Google Chrome.
+                    Welcome!<br>Before we begin:
+                </p>
+                <p style="text-align:left;">
+                    + Ensure you are using Google Chrome.
                     <br>
-                    Turn on Do not disturb.
+                    + Turn on Do not disturb.
                     <br>
-                    Please do not touch the keyboard unless prompted.
+                    + Set your brightness to maximum.
+                    <br>
+                    + Do not touch the keyboard unless prompted.
+                    <br>
+                    + Please do not spam.
                 </p>
             </div>
         </div>
@@ -341,20 +354,64 @@
                 <p class="caption">Local to Online</p>
             </div>
         </div>
-        <div class="slide">
+        <div class="slide"> <!--movie-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/34720437/original_17a50931dd304892ebd435b248218414.jpg?1740173988?bc=0" style="width:40vw">
             </div>
         </div>
-        <div class="slide">
+        <div class="slide"> <!--movie mirror-->
             <div class="slide-content">
                 <img src="https://pbs.twimg.com/media/GjVEwu4WwAA5AuT?format=jpg&name=large" style="width:40vw">
             </div>
         </div>
+        <div class="slide"> <!--venn-->
+            <div class="slide-content">
+                <img src="images/venn.png" style="width:50vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://i.pinimg.com/originals/2d/2e/a7/2d2ea77e60bac142d3f840547a279fba.gif">
+            </div>
+        </div>
+        <div class="slide"> <!--distance-->
+            <div class="slide-content">
+                <img src="https://mana.md/wp-content/uploads/2020/03/social-4954309_960_720.png" style="width:10vw">
+            </div>
+        </div>
         <div class="slide" style="background-color:black"> <!--PART 1-->
             <div class="slide-content link">
-                <p>Part 1</p>
+                <p>Part 1: (Mis)Translation</p>
                 <p>Me<span style="letter-spacing:-2px"> ⸺⸺⸺⸺⸺⸺⸺⸺ </span>Machine</p>
+            </div>
+        </div>
+        <div class="slide"> <!--typing chart-->
+            <div class="slide-content">
+                <img src="https://www.typing-lessons.org/images/which_fingers.png" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--ascii-->
+            <div class="slide-content">
+                <img src="images/ascii.png" style="width:40vw">
+                <p class="caption">ASCII Chart</p>
+            </div>
+        </div>
+        <div class="slide"> <!--ibm-->
+            <div class="slide-content">
+                <img src="https://www.johnhawthorn.com/static/images/modelh/IBM_Model_M-1.png" style="width:40vw">
+                <p class="caption">IBM Model H Keyboard (1984)</p>
+            </div>
+        </div>
+        <div class="slide"> <!--kanji keyboard-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719851/original_2c73922d1701a07b260fabd3aa512e64.jpg?1740172835?bc=0">
+                <p class="caption">ALPS CP10SJ550A Kanji Keyboard (1989)</p>
+            </div>
+        </div>
+        <div class="slide"> <!--ime-->
+            <div class="slide-content">
+                <img src="https://user-images.githubusercontent.com/5137077/59764510-e38f8080-92d6-11e9-9589-fcd1c4e21a30.gif" style="width:50vw; border:0.5px solid grey;">
+                <p class="caption">Kana Input Method Editor</p>
             </div>
         </div>
         <div class="slide"> <!--google-->
@@ -367,17 +424,32 @@
                 <p class="caption">"A New Proposal from the Google Japanese Input Team"</p>
             </div>
         </div>
-        <div class="slide"> <!--kanji keyboard-->
+        <div class="slide"> <!--unicode-->
             <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34719851/original_2c73922d1701a07b260fabd3aa512e64.jpg?1740172835?bc=0">
-                <p class="caption">ALPS CP10SJ550A Kanji Keyboard</p>
+                <div class="image-wrapper">
+                    <img src="https://www.alanwood.net/unicode/unianim.gif">
+                    <img src="https://textzformatter.com/wp-content/uploads/special-chars.gif">
+                </div>
+                <p class="caption">Unicode</p>
             </div>
         </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34962325/original_0c949b2a5ef99faa04cacb0b71dd2dcb.jpg?1741064955?bc=0">
+                <p class="caption">BabelMap</p>
+            </div>
+        </div> -->
         <div class="slide">
             <div class="slide-content link">
                 <a href="unicode-library/">Unicode Library →</a>
             </div>
         </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <img src="https://cleanspeak.com/images/blog-archive/leet-wiki-table.png">
+                <p class="caption">Leet (1337)</p>
+            </div>
+        </div> -->
         <div class="slide"> <!--font keyboards-->
             <div class="slide-content">
                 <div class="image-wrapper">
@@ -405,8 +477,18 @@
         </div>
         <div class="slide" style="background-color:black"> <!--PART 2-->
             <div class="slide-content link">
-                <p>Part 2</p>
+                <p>Part 2: (Mis)Understanding</p>
                 <p>Me<span style="letter-spacing:-2px"> ⸺⸺⸺⸺⸺⸺⸺⸺ </span>You</p>
+            </div>
+        </div>
+        <div class="slide"> <!--tone-->
+            <div class="slide-content">
+                <img src="https://socialsci.libretexts.org/@api/deki/files/82831/yesssss.gif?revision=1&size=bestfit&width=711&height=300" style="width:50vw">
+            </div>
+        </div>
+        <div class="slide"> <!--effect-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/12609192/original_91c1fdfd6b9c4735543136043d66b7f1.gif?1626893537?bc=0" style="width:40vw">
             </div>
         </div>
         <div class="slide"> <!--between computers-->
@@ -419,27 +501,16 @@
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/6387696/original_ce3e44a20c5362eb513c8522da155815.jpg?1583533795?bc=0" style="width:30vw">
             </div>
         </div>
-        <div class="slide"> <!--tennis-->
+        <!-- <div class="slide">
             <div class="slide-content">
-                <img src="https://i.pinimg.com/originals/37/45/d0/3745d001d4977eb9d1c08063403eeb11.gif" style="width:40vw">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/647027/original_0a3b5595f66f927b3de17fba4f6a6072.gif?1467153011?bc=1">
             </div>
-        </div>
-        <div class="slide"> <!--ties-->
+        </div> -->
+        <!-- <div class="slide">
             <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35527189/original_c1d4b4fc5d67c4b62f4c3c0a0b228554.png?1742989597?bc=0" style="width:30vw">
+                <h1>Multiplayer</h1>
             </div>
-        </div>
-        <div class="slide"> <!--pictochat-->
-            <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35845588/original_0cee0266f4a8b8e7d9698ea606cedbad.jpg?1744126094?bc=0">
-                <p class="caption">DS PictoChat</p>
-            </div>
-        </div>
-        <div class="slide"> <!--parking lot-->
-            <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36588320/original_1ec645906a8e19fb7ef71f879b140df8.png?1746913824?bc=0" style="width:50vw">
-            </div>
-        </div>
+        </div> -->
         <div class="slide"> <!--converge-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
@@ -448,14 +519,6 @@
         <div class="slide">
             <div class="slide-content">
                 <img src="default.svg" style="transform:translate(2px, 9px); width:30px; height:30px; filter:invert(); opacity:0.2;">
-            </div>
-        </div>
-        <div class="slide">
-            <div class="slide-content">
-                <div class="image-wrapper">
-                    <img src="https://external-preview.redd.it/Kolb2FzAVrTN54OCavGJY8Ms0_Df4goLzTmlyVu0J18.jpg?width=640&crop=smart&auto=webp&s=15326b711820791a8e85d5c185da4b7273d71068">
-                    <img src="https://static.wixstatic.com/media/c99e14_6f301fe70cb14b42beec089545973ad2~mv2.gif">
-                </div>
             </div>
         </div>
         <!-- <div class="slide">
@@ -483,6 +546,30 @@
         </div>
         <div class="slide">
             <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:50vw; width:50vw; border:0.5px solid black;"></div>
+                <p>where are you currently seated?</p>
+            </div>
+        </div>
+        <div class="slide"> <!--grandma-->
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://external-preview.redd.it/Kolb2FzAVrTN54OCavGJY8Ms0_Df4goLzTmlyVu0J18.jpg?width=640&crop=smart&auto=webp&s=15326b711820791a8e85d5c185da4b7273d71068">
+                    <img src="https://static.wixstatic.com/media/c99e14_6f301fe70cb14b42beec089545973ad2~mv2.gif">
+                </div>
+            </div>
+        </div>
+        <div class="slide"> <!--parking lot-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/36588320/original_1ec645906a8e19fb7ef71f879b140df8.png?1746913824?bc=0" style="width:50vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://media.tenor.com/8fIJwSJvC-UAAAAM/click.gif" style="height:10vh; filter:brightness(1.1)">
+            </div>
+        </div>
+        <div class="slide"> <!--cursor chat-->
+            <div class="slide-content">
                 <img src="images/cursor-chat.gif" style="width:80vw">
             </div>
         </div>
@@ -491,9 +578,55 @@
                 <a href="live-cursor/">Live Cursor →</a>
             </div>
         </div>
+        <div class="slide"> <!--concrete-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/4361090/original_6541c10e4d5b22a5b52b863ecbbc1bc3.jpg?1559123336?bc=1">
+                <p class="caption">Lehrer Bernstein</p>
+            </div>
+        </div>
+        <div class="slide"> <!--typewriter works-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34720688/original_0525afda2ce5d2ae3aec851336c30525.jpg?1740175087?bc=0">
+                <p class="caption">Andrew Topel</p>
+            </div>
+        </div>
+        <div class="slide"> <!--silence-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910765/original_617a7e72dc58843eb86ec964af41d1af.jpg?1740862855?bc=0">
+                <p class="caption">Derek Beaulieu</p>
+            </div>
+        </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <h1>Presence</h1>
+            </div>
+        </div> -->
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35845588/original_0cee0266f4a8b8e7d9698ea606cedbad.jpg?1744126094?bc=0">
+                <p class="caption">DS PictoChat</p>
+            </div>
+        </div> -->
         <div class="slide"> <!--typing indicator-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/36550771/original_1093a78db095b8b2c0a03e8846480275.gif?1746732034?bc=0" style="width:20vw; filter:brightness(1.05)">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <p style="font-size:50px; opacity:50%">✓ Seen <span id="seen"></span></p>
+            </div>
+        </div>
+        <div class="slide"> <!--on my way-->
+            <div class="slide-content">
+                <img src="https://i.redd.it/ps6t2hur54g11.jpg" style="width:30vw">
+                <p class="caption">On my way!</p>
+            </div>
+        </div>
+        <div class="slide"> <!--:/-->
+            <div class="slide-content">
+                <img src="https://pbs.twimg.com/media/Ga11pDpakAA4W5q?format=jpg&name=360x360" style="width:30vw">
+                <p class="caption">:/</p>
             </div>
         </div>
         <div class="slide">
@@ -501,12 +634,12 @@
                 <a href="masked/">Masked Typing →</a>
             </div>
         </div>
-        <div class="slide">
+        <!-- <div class="slide">
             <div class="slide-content">
-                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910780/original_bfbb69f857b1abd162426939de0df38e.jpg?1740862930?bc=0">
+                <h1>Turn-taking</h1>
             </div>
-        </div>
-        <div class="slide"> <!--turn taking-->
+        </div> -->
+        <div class="slide"> <!--passing stars-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/2111774/original_468ec8f007223cdd9295bd0c24759c00.gif?1525059693?bc=1" style="width:20vw">
             </div>
@@ -516,9 +649,64 @@
                 <img src="images/Battle.webp" style="width:40vw">
             </div>
         </div>
-        <div class="slide"> <!--problematic turn taking-->
+        <div class="slide"> <!--A B-->
             <div class="slide-content">
-                <img src="https://ars.els-cdn.com/content/image/1-s2.0-S088523082030111X-gr8.jpg" style="width:40vw">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/8037453/original_0cc9f827f88f17220b726b9feb30af13.jpg?1594999803?bc=0" style="width:30vw; filter:brightness(1.05)">
+            </div>
+        </div>
+        <div class="slide"> <!--tennis-->
+            <div class="slide-content">
+                <img src="https://i.pinimg.com/originals/37/45/d0/3745d001d4977eb9d1c08063403eeb11.gif" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide"> <!--no u-->
+            <div class="slide-content">
+                <img src="images/no-u.png">
+            </div>
+        </div>
+        <div class="slide"> <!--double text-->
+            <div class="slide-content">
+                <img src="images/double-text.png" style="border:0.5px solid grey;">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:40vh">
+                    <p style="margin-right:10px;">i do it all the time whatever</p>
+                    <div style="height:0.5px; width:60vw; background-color: black;"></div>
+                    <p style="margin-left:10px;">i would NEVER</p>
+                </div>
+                <p class="caption">Double-texting...?</p>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:40vh">
+                    <p style="margin-right:10px;">it's literally so normal</p>
+                    <div style="height:0.5px; width:60vw; background-color: black;"></div>
+                    <p style="margin-left:10px;">um rude...?</p>
+                </div>
+                <p class="caption">Getting left on read...?</p>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; height:40vh">
+                    <p style="margin-right:10px;">i wait for them to send their message</p>
+                    <div style="height:0.5px; width:60vw; background-color: black;"></div>
+                    <p style="margin-left:10px;">me first, i'm pressing SEND!</p>
+                </div>
+                <p class="caption">I'm typing but someone else is also typing...</p>
+            </div>
+        </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <a href="close/">Close →</a>
+            </div>
+        </div> -->
+        <div class="slide"> <!--ties-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/35527189/original_c1d4b4fc5d67c4b62f4c3c0a0b228554.png?1742989597?bc=0" style="width:30vw">
             </div>
         </div>
         <div class="slide"> <!--group chat-->
@@ -526,9 +714,56 @@
                 <img src="https://www.tapsmart.com/wp-content/uploads/2016/08/group-imessages-1.png" style="width:40vw">
             </div>
         </div>
+        <div class="slide"> <!--party-->
+            <div class="slide-content">
+                <img src="https://legendary-digital-network-assets.s3.amazonaws.com/geekandsundry/wp-content/uploads/2018/10/supermariopartyminigames10-640.gif">
+                <p class="caption">Group conversations are teamwork</p>
+            </div>
+        </div>
+        <div class="slide"> <!--ball-->
+            <div class="slide-content">
+                <img src="images/ballpapa.gif" style="width:60vw">
+                <p class="caption">But sometimes...</p>
+            </div>
+        </div>
+        <div class="slide"> <!--problematic turn taking-->
+            <div class="slide-content">
+                <img src="https://ars.els-cdn.com/content/image/1-s2.0-S088523082030111X-gr8.jpg" style="width:40vw">
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <div class="image-wrapper">
+                    <img src="https://d2w9rnfcy7mm78.cloudfront.net/32730692/original_c0e4989a1fc8d83afe94280c2e034b08.jpg?1733298247?bc=0">
+                    <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910789/original_23b0deb9e9c1bb553410750d2753719b.jpg?1740862959?bc=0">
+                </div>
+            </div>
+        </div>
+        <!-- <div class="slide">
+            <div class="slide-content">
+                <h1>Transcription</h1>
+            </div>
+        </div> -->
+        <div class="slide">
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/32321179/original_ed24d1a636166d08fc704f8ceb3a6115.png?1731952750?bc=0">
+            </div>
+        </div>
+        <div class="slide"> <!--spiral-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/9158785/original_3c14a168d74c476161fc234f36b76a52.jpg?1602984622?bc=0">
+            </div>
+        </div>
+        <div class="slide"> <!--notation-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/34910780/original_bfbb69f857b1abd162426939de0df38e.jpg?1740862930?bc=0">
+                <p class="caption">Brian Eno</p>
+            </div>
+        </div>
         <div class="slide"> <!--transitional-->
             <div class="slide-content">
                 <img src="https://d2w9rnfcy7mm78.cloudfront.net/36138544/original_e75b5ec8f8f92733ca596e4c1b838fe6.png?1745247689?bc=0" style="width:60vw">
+                <p class="caption">Transitional overlap onset</p>
             </div>
         </div>
         <div class="slide">
@@ -536,10 +771,15 @@
                 <a href="timeline/">Timeline →</a>
             </div>
         </div>
+        <div class="slide"> <!--space for all of us-->
+            <div class="slide-content">
+                <img src="https://d2w9rnfcy7mm78.cloudfront.net/29684693/original_1a45cc71bd485e910786d44226df8280.jpg?1722279395?bc=0">
+            </div>
+        </div>
         <div class="slide">
             <div class="slide-content" style="padding-top:0; padding-bottom:0;">
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
-                    <canvas id="drawingCanvas" style="border:0.5px dashed grey; background-color:white; pointer-events:auto; width:90%; height:80%;"></canvas>
+                    <canvas id="drawingCanvas" style="background-color:rgb(0, 0, 0, 0.01); border:0.5px dashed black; box-shadow:0 0 20px rgba(0, 0, 0, 0.1); pointer-events:auto; width:90%; height:80%;"></canvas>
                     <div style="margin-top:20px;">
                         <button id="clearCanvas" style="font-family:'Helvetica Neue'; border:0.5px dashed blue; background:none; padding:5px 20px; color:blue; pointer-events:auto;">Clear Canvas</button>
                     </div>
@@ -548,15 +788,52 @@
         </div>
         <div class="slide">
             <div class="slide-content">
+                <p>Nothing in Between<br><span style="opacity:0.5">Graphic Design Degree Project 2025<br>Ryan Yan</span></p>
+                <div style="width:65vw; height:0px; border-bottom:0.5px dashed black; margin-top:50px; margin-bottom:20px; max-width:1000px"></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; column-gap:2em; text-align:left; width:60vw; max-width:1000px">
+                    <div>
+                        <p>Thank you to everyone for taking part in this experience,<br>with an extended thanks to</p>
+                        <p>
+                            Anastasiia,<br><span style="opacity:0.5">for guiding me through this project as my advisor.</span>
+                        </p>
+                        <p>
+                            Gabriel, Minkyoung, and Halim<br><span style="opacity:0.5">for encouraging me to push my web practice further.</span>
+                        </p>
+                        <p>
+                            Josh,<br><span style="opacity:0.5">for always willing to offer new perspectives on language.</span>
+                        </p>
+                        <p>
+                            Anther and Elizabeth,<br><span style="opacity:0.5">for the thoughtful feedback and conversations.</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            Li, Ash, Andrew, Radhika<br><span style="opacity:0.5">for keeping each other company as desk mates during countless late nights on the 8th floor.</span>
+                        </p>
+                        <p>
+                            Ashley and Jyot<br><span style="opacity:0.5">(my future roommates!) for our parallel suffering in securing housing.</span>
+                        </p>
+                        <p>
+                            RISD GD class of 2025,<br><span style="opacity:0.5">for everyone's efforts in building our community.</span>
+                        </p>
+                        <p>
+                            Ethan,<br><span style="opacity:0.5">for always comforting and reassuring me (and for testing the multiplayer experience)</span>
+                        </p>
+                        <p>
+                            And especially, to my mom and dad,<br>for their endless, unwavering support,<br>for reminding me that distance is never constant,<br>for always making room to hold me a little closer.</p>
+                    </div>
+                </div>
+                <div style="width:65vw; height:0px; border-bottom:0.5px dashed black; margin-top:20px; max-width:1000px"></div>
                 <div class="image-wrapper">
                     <a href="unicode-library/">Unicode Library →</a>
                     <a href="mapping/">Unicode Mapping →</a>
-                    <a <a href="paths/">Keyboard Paths →</a>
+                    <a href="paths/">Keyboard Paths →</a>
                     <a href="live-cursor/">Live Cursor →</a>
-                    <a href="close/">Close →</a>
+                    <!-- <a href="close/">Close →</a> -->
                     <a href="masked/">Masked Typing →</a>
                     <a href="timeline/">Timeline →</a>
                 </div>
+                <!-- <p>Nothing in Between<br><span style="opacity:0.5">Graphic Design Degree Project 2025<br>Ryan Yan</span></p> -->
             </div>
         </div>
     </div>
@@ -1076,15 +1353,11 @@
                 isDrawing = false;
             }
             
-            // Clear the canvas
+            //clear canvas
             function clearCanvas(){
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 set(ref(db, `${BASE_PATH}/drawing/lines`), null);
             }
-            
-            // Remove custom style overrides to keep the cursor:none styling
-            // canvas.style.cursor = 'crosshair';
-            // canvas.style.pointerEvents = 'auto';
             
             // Keep these - we need pointer events but not custom cursor style
             canvas.style.pointerEvents = 'auto';
@@ -1130,14 +1403,11 @@
                 stopDrawing();
             });
             
-            // Listen for clear button clicks
             clearButton.addEventListener('click', clearCanvas);            
             
-            // Initialize canvas size
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Initial draw from firebase
             syncCanvas();
         }
     
@@ -1147,6 +1417,7 @@
         function currentTime(){
             function updateTime(){
                 document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+                document.getElementById('seen').textContent = new Date().toLocaleTimeString();
             }
     
             updateTime();
