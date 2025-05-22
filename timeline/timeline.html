@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="style.css">
     <script src="../script.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap">
 </head>
 <body>
     <div id="backButton">← Back</div>
@@ -21,8 +22,8 @@
         </div>
     </div>
     <div class="debug-panel">
-        <button class="clear-button" id="clear-transcript">Clear Transcript</button>
-        <div>Active Users: <span id="active-users-count">0</span></div>
+        <!-- <button class="clear-button" id="clear-transcript">Clear Transcript</button> -->
+        <!-- <div>Active Users: <span id="active-users-count">0</span></div> -->
     </div>
 
     <script type="module">
@@ -94,7 +95,7 @@
             timelineContainer:document.querySelector('.timeline-container'),
             timeLabel:document.getElementById('current-time'),
             transcriptArea:document.getElementById('transcript-area'),
-            activeUsersCount:document.getElementById('active-users-count'),
+            //activeUsersCount:document.getElementById('active-users-count'),
             clearButton:document.getElementById('clear-transcript'),
             backButton:document.getElementById('backButton'),
         };
@@ -160,15 +161,15 @@
                 //clear and rebuild transcript
                 elements.transcriptArea.innerHTML = '';
                 
-                // Track active lines for each user
+                //Track active lines for each user
                 let userLines = {};
-                let userLastTimestamps = {}; // Track last timestamp for each user
+                let userLastTimestamps = {}; //Track last timestamp for each user
                 let lastTimestamp = null;
                 
                 entries.forEach(entry =>{
-                    const TIMEOUT_THRESHOLD = 2000; // 2 seconds in milliseconds
+                    const TIMEOUT_THRESHOLD = 2000; //2 seconds in milliseconds
                     
-                    // For userCount type, always create a new separate line
+                    //create new separate line
                     if (entry.type === 'userCount'){
                         const countLine = document.createElement('div');
                         countLine.className = 'transcript-line';
@@ -177,23 +178,23 @@
                         span.textContent = entry.char;
                         countLine.appendChild(span);
                         elements.transcriptArea.appendChild(countLine);
-                        return; // Skip the rest of processing for this entry
+                        return; //Skip the rest of processing for this entry
                     }
                     
-                    // Check if we need a new line for this user
+                    //check if we need a new line for this user
                     let needNewLine = false;
                     
-                    // No line for this user yet
+                    //no line for this user yet
                     if (!userLines[entry.userId]) {
                         needNewLine = true;
                     }
-                    // Same user but with >2s pause
+                    //same user but with >2s pause
                     else if (userLastTimestamps[entry.userId] && 
                             entry.timestamp - userLastTimestamps[entry.userId] > TIMEOUT_THRESHOLD) {
                         needNewLine = true;
                     }
                     
-                    // Create a new line if needed
+                    //create a new line
                     if (needNewLine){
                         const line = document.createElement('div');
                         line.className = 'transcript-line';
@@ -204,7 +205,7 @@
                     
                     const currentLine = userLines[entry.userId];
                     
-                    // Add spacing based on time difference if needed
+                    //add spacing based on time difference if needed
                     if (userLastTimestamps[entry.userId]){
                         const timeDiff = entry.timestamp - userLastTimestamps[entry.userId];
                         const spaces = Math.floor(Math.abs(timeDiff) / 100);
@@ -213,10 +214,10 @@
                         }
                     }
                     
-                    // Add the character
+                    //add the character
                     currentLine.appendChild(document.createTextNode(entry.char));
                     
-                    // Update the user's last timestamp
+                    //update the user timestamp
                     userLastTimestamps[entry.userId] = entry.timestamp;
                     lastTimestamp = entry.timestamp;
                 });
@@ -371,16 +372,15 @@
         }
         
         //clear transcript function
-        function clearTranscript() {
-            //clear firebase transcript data
-            set(ref(db, `${BASE_PATH}/${state.currentRoom}/transcript`), null);
-        }
+        // function clearTranscript() {
+        //     //clear firebase transcript data
+        //     set(ref(db, `${BASE_PATH}/${state.currentRoom}/transcript`), null);
+        // }
         
-        //leave room and go back to room selection
         function leaveRoom() {
             const userRef = ref(db, `${BASE_PATH}/${state.currentRoom}/users/${state.userId}`);
             remove(userRef);
-            window.location.href = 'index.html';
+            window.location.href = '../../';
         }
         
         //event listeners
@@ -405,7 +405,7 @@
         });
         
         //clear transcript button
-        elements.clearButton.addEventListener('click', clearTranscript);
+        // elements.clearButton.addEventListener('click', clearTranscript);
         
         //back to rooms button
         elements.backButton.addEventListener('click', leaveRoom);

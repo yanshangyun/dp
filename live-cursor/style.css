@@ -1,5 +1,5 @@
 body{
-    font-family: "Fragment Mono", monospace;
+    font-family:Arial, Helvetica, sans-serif;
     margin:0;
     padding:0;
     overflow:hidden;
@@ -165,6 +165,7 @@ body{
     word-break:break-all;
     margin-bottom:10px;
     font-size:12px;
+    font-family:monospace;
     animation:open 1s cubic-bezier(.78,0,.2,1) forwards, transcriptShadow 1s cubic-bezier(.78,0,.2,1) forwards;
     animation-delay:3s;
     /* border-radius:5px; */
@@ -207,7 +208,7 @@ body{
     flex-direction:column;
     width:100%;
     gap:10px;
-    height:300px;
+    height:200px;
 }
 
 .room-button{
@@ -241,5 +242,6 @@ body{
 }
 
 .capacity{
+    font-family:monospace;
     color:grey;
 }

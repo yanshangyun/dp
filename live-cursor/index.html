@@ -1,500 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>(live cursor)</title>
-  <style>
-    html, body{
-      margin:0;
-      height:100%;
-      background:white;
-      overflow:hidden;
-      cursor:cell;
-      font-family:'Times New Roman', Times, serif
-    }
-
-    .text-char{
-      position:absolute;
-      font-size:16px;
-      transform:translate(-50%, -50%);
-      pointer-events:none;
-    }
-
-    #matter-container{
-      position:absolute;
-      top:0;
-      left:0;
-      width:100%;
-      height:100%;
-      z-index:1;
-    }
-    
-    #info{
-      font-family:Arial, Helvetica, sans-serif;
-      font-size:12px;
-      position:fixed;
-      top:10px;
-      left:50%;
-      transform:translateX(-50%);
-      display:flex;
-      flex-direction:row;
-      background-color:rgba(239, 239, 239, 0.75);
-      border-radius:50px;
-      padding:0 20px;
-      z-index:999;
-      gap:50px;
-      height:20px;
-      align-items:center;
-      justify-content:center;
-    }
-
-    #activeUsers{
-      font-family:Arial, Helvetica, sans-serif;
-      font-size:12px;
-      position:fixed;
-      top:10px;
-      right:10px;
-      transform:translateY(-50%);
-      display:flex;
-      flex-direction:row;
-      background-color:rgba(239, 239, 239, 0.75);
-      border-radius:50px;
-      padding:0 5px;
-      z-index:999;
-      height:20px;
-      align-items:center;
-      justify-content:center;
-    }
-  </style>
-  <link rel="stylesheet" href="../style.css">
-  <script src="../script.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>(live cursor) room selection</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="../script.js"></script>
 </head>
 <body>
-  <a onclick="goBack()" id="backButton">← Back</a>
-  <div id="matter-container"></div>
-  <div id="info">
-    <p>press ESC to realign</p>
-    <p>press ENTER to clear text</p>
-    <label style="display:flex; align-items:center; gap:5px;">
-      <input type="checkbox" id="colorToggle" checked />
-      color
-    </label>
-  </div>
-  <p id="activeUsers">0</p>
+    <a id="backButton" href="../">← Back</a>
+    <div class="room-selection">
+        <p>Select a chat room to join.</p>
+        <div class="room-button-wrapper" id="roomList">
+            <!--room buttons-->
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
-  
-  <script type="module">
-    //import
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, onDisconnect, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    
-    //firebase
-    const app = initializeApp({
-      apiKey: "AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
-      authDomain: "chat-f7267.firebaseapp.com",
-      databaseURL: "https://chat-f7267-default-rtdb.firebaseio.com",
-      projectId: "chat-f7267",
-      storageBucket: "chat-f7267.firebasestorage.app",
-      messagingSenderId: "393364272511",
-      appId: "1:393364272511:web:7d40dfd804011f210b964a"
-    });
+    <script type="module">
+        import{ initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import{ getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    const db = getDatabase(app);
-    
-    //setup
-    const BASE_PATH = 'live-cursor';
-
-    const userId = 'user_' + Math.random().toString(36).substr(2, 9);
-    const userColor = "#" + Math.floor(Math.random()*16777215).toString(16);
-    const cursorsRef = ref(db, `${BASE_PATH}/cursors`);
-    const userCursorRef = ref(db, `${BASE_PATH}/cursors/${userId}`);
-    const settingsRef = `${BASE_PATH}/settings`;
-
-    const colorToggle = document.getElementById("colorToggle");
-    
-    //data tracking
-    const cursors = {};
-    const charElements = {};
-    const physicsChains = {};
-    let currentText = "";
-    let showColor = true;
-    let mouseX = 0, mouseY = 0;
-    const maxTextLength = 30;
-    
-    //initialize matter.js
-    const { Engine, Render, Runner, Bodies, Composite, Constraint, Body } = Matter;
-    
-    const engine = Engine.create({ gravity:{x:0, y:0} });
-    const render = Render.create({
-      element: document.getElementById('matter-container'),
-      engine: engine,
-      options:{
-        width: window.innerWidth,
-        height: window.innerHeight,
-        wireframes: false,
-        background: 'transparent'
-      }
-    });
-    
-    Render.run(render);
-    Runner.run(Runner.create(), engine);
-    
-    //create a physics chain for text
-    function createTextChain(userId, text, x, y) {
-      const previousChain = physicsChains[userId];
-      let previousBodies = [];
-      let lastPosition = null;
-      
-      if (previousChain?.text && text.startsWith(previousChain.text)) {
-        previousBodies = [...previousChain.bodies];
-        if (previousBodies.length > 0) {
-          const lastBody = previousBodies[previousBodies.length - 1];
-          lastPosition = {
-            x: lastBody.position.x + 15,
-            y: lastBody.position.y
-          };
-        }
-      }
-      
-      if (previousChain) {
-        Composite.remove(engine.world, previousChain.composite);
-        delete physicsChains[userId];
-      }
-      
-      if (!text) return null;
-      
-      const bodies = [];
-      const constraints = [];
-      const composite = Composite.create();
-      
-      for (let i = 0; i < text.length; i++) {
-        let startX, startY;
-        
-        if (i < previousBodies.length) {
-          startX = previousBodies[i].position.x;
-          startY = previousBodies[i].position.y;
-        } else if (lastPosition && i === previousBodies.length) {
-          startX = lastPosition.x;
-          startY = lastPosition.y;
-        } else if (i === 0) {
-          startX = x + 15;
-          startY = y;
-        } else {
-          startX = bodies[i-1].position.x + 15;
-          startY = bodies[i-1].position.y;
-        }
-        
-        bodies.push(Bodies.circle(startX, startY, 8, {
-          friction: 0.05,
-          frictionAir: 0.1,
-          restitution: 0.2,
-          render:{ fillStyle: 'transparent', strokeStyle: 'transparent' }
-        }));
-      }
-      
-      for (let i = 0; i < bodies.length - 1; i++) {
-        constraints.push(Constraint.create({
-          bodyA: bodies[i],
-          bodyB: bodies[i+1],
-          stiffness: 0.05,
-          damping: 0.1,
-          length: 15,
-          render:{ visible: false }
-        }));
-      }
-      
-      if (bodies.length > 0) {
-        constraints.push(Constraint.create({
-          pointA:{x, y},
-          bodyB: bodies[0],
-          stiffness: 0.01,
-          damping: 0.1,
-          length: 10,
-          render:{ visible: false }
-        }));
-      }
-      
-      Composite.add(composite, [...bodies, ...constraints]);
-      Composite.add(engine.world, composite);
-      
-      physicsChains[userId] = {
-        bodies,
-        constraints,
-        composite,
-        leadConstraint: constraints[constraints.length - 1],
-        text
-      };
-      
-      return physicsChains[userId];
-    }
-    
-    function updateChainAnchor(userId, x, y) {
-      const chain = physicsChains[userId];
-      if (chain?.leadConstraint) {
-        chain.leadConstraint.pointA = {x, y};
-      }
-    }
-
-    //update cursor data
-    function updateCursor(id, data) {
-      if (id === userId) return;
-      
-      if (!cursors[id]) {
-        const cursorEl = document.createElement("div");
-        cursorEl.className = "cursor";
-        cursorEl.style.background = data.color || "#FF0000";
-        document.body.appendChild(cursorEl);
-        cursors[id] = cursorEl;
-        charElements[id] = [];
-      }
-      
-      cursors[id].style.left = data.x + "px";
-      cursors[id].style.top = data.y + "px";
-      
-      if (data.text !== undefined) {
-        const existingChain = physicsChains[id];
-        if (!existingChain?.text || existingChain.text !== data.text) {
-          createTextChain(id, data.text, data.x, data.y);
-          updateTextDisplay(id, data.text, data.color);
-        }
-        
-        if (data.realigned === true) {
-          realignText(id, data.x, data.y);
-        }
-      }
-      
-      updateChainAnchor(id, data.x, data.y);
-    }
-    
-    function updateTextDisplay(id, text, color) {
-      charElements[id] = charElements[id] || [];
-      charElements[id].forEach(char => char.parentNode?.removeChild(char));
-      charElements[id] = [];
-      
-      for (let i = 0; i < text.length; i++) {
-        const charEl = document.createElement("span");
-        charEl.className = "text-char";
-        charEl.textContent = text[i];
-        charEl.style.color = showColor ? (color || "#FF0000") : "#000000";
-        document.body.appendChild(charEl);
-        charElements[id].push(charEl);
-      }
-    }
-
-    //color toggle    
-    colorToggle.addEventListener("change", () => {
-      const newValue = colorToggle.checked;
-      update(ref(db, settingsRef), { showColor: newValue });
-    });
-    
-    //cleanup
-    function clearUser(id) {
-      //remove cursor element
-      if (cursors[id]?.parentNode) {
-        cursors[id].parentNode.removeChild(cursors[id]);
-        delete cursors[id];
-      }
-      
-      //remove character elements
-      if (charElements[id]) {
-        charElements[id].forEach(char => char.parentNode?.removeChild(char));
-        delete charElements[id];
-      }
-      
-      //remove physics chain
-      if (physicsChains[id]) {
-        Composite.remove(engine.world, physicsChains[id].composite);
-        delete physicsChains[id];
-      }
-    }
-    
-    function animate() {
-      Object.keys(physicsChains).forEach(id => {
-        const chain = physicsChains[id];
-        const chars = charElements[id] || [];
-        
-        for (let i = 0; i < chars.length && i < chain.bodies.length; i++) {
-          const char = chars[i];
-          const body = chain.bodies[i];
-          
-          if (char && body) {
-            char.style.left = body.position.x + "px";
-            char.style.top = body.position.y + "px";
-          }
-        }
-      });
-      
-      requestAnimationFrame(animate);
-    }
-    
-    animate();
-    
-    onValue(cursorsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const activeUserIds = Object.keys(data);
-      
-      //clear old ids
-      Object.keys(cursors).forEach(id => {
-        if (!activeUserIds.includes(id)) {
-          clearUser(id);
-        }
-      });
-      
-      //process active cursors
-      activeUserIds.forEach(id => {
-        if (id !== userId) {
-          updateCursor(id, data[id]);
-        }
-      });
-
-      document.getElementById('activeUsers').textContent = activeUserIds.length;
-    });
-    
-    //event handling
-    document.addEventListener("mousemove", e => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      updateChainAnchor(userId, mouseX, mouseY);
-      
-      if (!document.mouseMoveTimer) {
-        document.mouseMoveTimer = setTimeout(() => {
-          updateFirebase(false);
-          document.mouseMoveTimer = null;
-        }, 25);
-      }
-    });
-    
-    document.addEventListener("keydown", e => {
-      const previousText = currentText;
-      
-      if (e.key === "Enter" && currentText.length > 0) {
-        currentText = ""; //clear text
-      } else if (e.key === "Escape") {
-        realignText(userId);
-        return;
-      } else if (e.key === "Backspace") {
-        currentText = currentText.slice(0, -1);
-      } else if (e.key.length === 1) {
-        if (currentText.length >= maxTextLength) {
-          currentText = currentText.slice(1) + e.key;
-        } else {
-          currentText += e.key;
-        }
-      } else {
-        return;
-      }
-      
-      if (previousText !== currentText) {
-        createTextChain(userId, currentText, mouseX, mouseY);
-        updateTextDisplay(userId, currentText, userColor);
-        updateFirebase(true);
-      }
-    });
-    
-    //paste
-    document.addEventListener("paste", e => {
-      e.preventDefault();
-      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-      if (!pastedText) return;
-      
-      const previousText = currentText;
-      
-      if (currentText.length + pastedText.length <= maxTextLength) {
-        currentText += pastedText;
-      } else {
-        const availableSpace = maxTextLength - currentText.length;
-        currentText += pastedText.substring(0, availableSpace);
-      }
-      
-      if (previousText !== currentText) {
-        createTextChain(userId, currentText, mouseX, mouseY);
-        updateTextDisplay(userId, currentText, userColor);
-        updateFirebase(true);
-      }
-    });
-    
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        remove(userCursorRef);
-      } else {
-        updateFirebase(true);
-      }
-    });
-    
-    //resize
-    window.addEventListener("resize", () => {
-      render.options.width = window.innerWidth;
-      render.options.height = window.innerHeight;
-      Render.setPixelRatio(render, window.devicePixelRatio);
-    });
-    
-    //update database
-    function updateFirebase(includeText) {
-      const data = {
-        x: mouseX,
-        y: mouseY,
-        color: userColor
-      };
-      
-      if (includeText) {
-        data.text = currentText;
-        if (window.textWasRealigned) {
-          data.realigned = true;
-        }
-      }
-      
-      set(userCursorRef, data);
-    }
-    
-    //realign
-    function realignText(id, forcedX, forcedY) {
-      const chain = physicsChains[id];
-      if (!chain?.bodies?.length) return;
-      
-      const cursorX = forcedX !== undefined ? forcedX : chain.leadConstraint.pointA.x;
-      const cursorY = forcedY !== undefined ? forcedY : chain.leadConstraint.pointA.y;
-      
-      chain.bodies.forEach((body, i) => {
-        const spacing = 15;
-        const newX = cursorX + (i + 1) * spacing;
-        const newY = cursorY;
-        
-        //reset all physics properties
-        Body.setVelocity(body, { x: 0, y: 0 });
-        Body.setAngularVelocity(body, 0);
-        Body.setAngle(body, 0);
-        Body.setPosition(body, { x: newX, y: newY });
-      });
-      
-      if (id === window.userId) {
-        window.textWasRealigned = true;
-        updateFirebase(true);
-        setTimeout(() => { window.textWasRealigned = false; }, 100);
-      }
-    }
-    
-    onDisconnect(userCursorRef).remove();
-
-    onValue(ref(db, settingsRef + "/showColor"), (snapshot) => {
-      const value = snapshot.val();
-      if (typeof value === "boolean") {
-        showColor = value;
-        colorToggle.checked = value;
-        Object.keys(charElements).forEach(id => {
-          updateTextDisplay(id, physicsChains[id]?.text || "", id === userId ? userColor : (cursors[id]?.style.background || "#000000"));
+        const app = initializeApp({
+            apiKey:"AIzaSyAo8Jf8ycMszsOn7kmNW9Z3RbhmyGyxtqc",
+            authDomain:"chat-f7267.firebaseapp.com",
+            databaseURL:"https://chat-f7267-default-rtdb.firebaseio.com",
+            projectId:"chat-f7267",
+            storageBucket:"chat-f7267.firebasestorage.app",
+            messagingSenderId:"393364272511",
+            appId:"1:393364272511:web:7d40dfd804011f210b964a",
+            measurementId:"G-X3PF8YJYT8"
         });
-      }
-    });
-
-    get(ref(db, settingsRef + "/showColor")).then((snapshot) => {
-      if (!snapshot.exists()) {
-        update(ref(db, settingsRef), { showColor: true });
-      }
-    });
-
-    window.textWasRealigned = false;
-    window.userId = userId;
-  </script>
+        
+        const db = getDatabase(app);
+        const BASE_PATH = 'live-cursor';
+        
+        const MAX_USERS_PER_ROOM = 12;
+        const TOTAL_ROOMS = 2;
+        
+        const roomList = document.getElementById('roomList');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        //room data structure
+        const rooms = {};
+        for(let i = 1; i <= TOTAL_ROOMS; i++) {
+            rooms[`${i}`] = {
+                id: `${i}`,
+                name: `Room ${i}`,
+                users: {},
+                userCount: 0
+            };
+        }
+        
+        //listen for user counts in all rooms
+        function listenToRooms() {
+            for(let roomId in rooms) {
+                const roomUsersRef = ref(db, `${BASE_PATH}/${roomId}/users`);
+                onValue(roomUsersRef, (snapshot) => {
+                    const users = snapshot.val() || {};
+                    rooms[roomId].users = users;
+                    rooms[roomId].userCount = Object.keys(users).length;
+                    updateRoomDisplay();
+                });
+            }
+        }
+        
+        //update the room display
+        function updateRoomDisplay() {
+            roomList.innerHTML = '';
+            
+            for(let roomId in rooms) {
+                const room = rooms[roomId];
+                const isFull = room.userCount >= MAX_USERS_PER_ROOM;
+                
+                const button = document.createElement('div');
+                button.className = `room-button ${isFull ? 'full' : ''}`;
+                button.innerHTML = `
+                    <span>${room.name}</span>
+                    <span class="capacity">${room.userCount}/${MAX_USERS_PER_ROOM}</span>
+                `;
+                
+                if(!isFull) {
+                    button.addEventListener('click', () => joinRoom(roomId));
+                } else {
+                    button.addEventListener('click', () => {
+                        errorMessage.textContent = 'Chat room full!';
+                        setTimeout(() => {
+                            errorMessage.textContent = '';
+                        }, 3000);
+                    });
+                }
+                
+                roomList.appendChild(button);
+            }
+        }
+        
+        //join a room
+        function joinRoom(roomId) {
+            //double-check if room is full
+            if(rooms[roomId].userCount >= MAX_USERS_PER_ROOM) {
+                errorMessage.textContent = 'Chat room full';
+                setTimeout(() => {
+                    errorMessage.textContent = '';
+                }, 2000);
+                return;
+            }
+            
+            window.location.href = `cursor.html?room=${roomId}`;
+        }
+        
+        //initialize
+        window.addEventListener('load', () => {
+            listenToRooms();
+        });
+        
+        //safari check
+        (function() {
+            function isSafari() {
+                const ua = navigator.userAgent.toLowerCase();
+                return (
+                    (ua.indexOf('safari') !== -1) && 
+                    (ua.indexOf('chrome') === -1) && 
+                    (ua.indexOf('android') === -1) &&
+                    (ua.indexOf('edg') === -1) &&
+                    (ua.indexOf('firefox') === -1)
+                );
+            }
+            
+            if(isSafari()) {
+                alert('This page is not compatible with Safari browsers. Please use Chrome, Firefox, or Edge instead.');
+                
+                const style = document.createElement('style');
+                style.textContent = 'body { display: none !important; }';
+                document.head.appendChild(style);
+                
+                window.addEventListener('DOMContentLoaded', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, true);
+                
+                throw new Error('Safari detected - halting execution');
+            }
+        })();
+    </script>
 </body>
 </html>
