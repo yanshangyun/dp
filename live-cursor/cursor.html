@@ -189,7 +189,7 @@
     function leaveRoom() {
       const userRef = ref(db, `${BASE_PATH}/${currentRoom}/users/${userId}`);
       remove(userRef);
-      window.location.href = 'index.html';
+      window.location.href = '../../';
     }
     
     //create a physics chain for text
